@@ -5,6 +5,7 @@ import type { OptimizationMode } from '../../types/cutSheet'
 
 const SHEET_PRESETS = [
   { label: '4×8 ft', width: 96, height: 48 },
+  { label: '5×5 ft', width: 60, height: 60 },
   { label: '4×4 ft', width: 48, height: 48 },
   { label: '2×4 ft', width: 48, height: 24 },
 ]
