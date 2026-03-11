@@ -33,7 +33,7 @@ export function ResultsPanel() {
 
       {/* Sheet tabs + actions */}
       <div className="px-3 pt-2.5 flex items-center justify-between border-b border-border">
-        <div className="flex gap-1 overflow-x-auto flex-1 min-w-0">
+        <div className="flex gap-1 flex-1 min-w-0">
           {result.sheets.map((sheet, i) => (
             <button
               key={sheet.id}

@@ -133,25 +133,30 @@ export function SheetView({ sheet }: SheetViewProps) {
         </g>
       </svg>
 
-      {/* Piece Legend (Included in Export) */}
-      {sheetLegendItems.length > 0 && (
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-text-muted px-1">
-          {sheetLegendItems.map((item) => (
-            <div key={item.piece.id} className="flex items-center gap-1.5">
-              <div
-                className="w-4 h-4 rounded-[3px] flex items-center justify-center text-[10px] font-bold text-white"
-                style={{ backgroundColor: item.piece.color, textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}
-              >
-                {getPieceLabel(item.index)}
+      {/* Piece Legend + Sheet Dims (Included in Export) */}
+      <div className="flex items-start justify-between gap-4 text-[13px] px-1">
+        {sheetLegendItems.length > 0 && (
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-text-muted">
+            {sheetLegendItems.map((item) => (
+              <div key={item.piece.id} className="flex items-center gap-1.5">
+                <div
+                  className="w-4 h-4 rounded-[3px] flex items-center justify-center text-[10px] font-bold text-white"
+                  style={{ backgroundColor: item.piece.color, textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}
+                >
+                  {getPieceLabel(item.index)}
+                </div>
+                <span className="text-text-secondary">
+                  {formatDimension(item.piece.width, unitSystem)} × {formatDimension(item.piece.height, unitSystem)}
+                </span>
+                <span className="text-text-muted">×{item.sheetCount}</span>
               </div>
-              <span className="text-text-secondary">
-                {formatDimension(item.piece.width, unitSystem)} × {formatDimension(item.piece.height, unitSystem)}
-              </span>
-              <span className="text-text-muted">×{item.sheetCount}</span>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+        <span className="text-text-muted flex-shrink-0">
+          {formatDimension(sheetWidth, unitSystem)} × {formatDimension(sheetHeight, unitSystem)} sheet
+        </span>
+      </div>
     </div>
   )
 }
