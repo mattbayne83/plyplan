@@ -1,11 +1,10 @@
-import { Camera, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 
 interface EmptyStateProps {
-  onCamera: () => void
   onManual: () => void
 }
 
-export function EmptyState({ onCamera, onManual }: EmptyStateProps) {
+export function EmptyState({ onManual }: EmptyStateProps) {
   return (
     <div className="bg-surface rounded-[var(--radius-card)] border border-border p-6 text-center space-y-5">
       {/* Simple plywood illustration */}
@@ -19,24 +18,17 @@ export function EmptyState({ onCamera, onManual }: EmptyStateProps) {
       <div>
         <h2 className="text-[18px] font-semibold text-text mb-1">What are you building?</h2>
         <p className="text-[13px] text-text-muted">
-          Snap a photo of your sketch or add pieces manually.
+          Add your pieces and we'll figure out how many sheets you need.
         </p>
       </div>
 
-      <div className="space-y-2">
-        <button
-          onClick={onCamera}
-          className="w-full flex items-center justify-center gap-2 bg-primary text-white text-[15px] font-medium rounded-[var(--radius-button)] py-3 px-4 hover:bg-primary-hover transition-colors"
-        >
-          <Camera size={20} />
-          Snap a Photo
-        </button>
+      <div>
         <button
           onClick={onManual}
-          className="w-full flex items-center justify-center gap-2 bg-transparent text-text-secondary text-[15px] font-medium rounded-[var(--radius-button)] py-3 px-4 border border-border hover:bg-surface-raised transition-colors"
+          className="w-full flex items-center justify-center gap-2 bg-primary text-white text-[15px] font-medium rounded-[var(--radius-button)] py-3 px-4 hover:bg-primary-hover transition-colors"
         >
           <Plus size={20} />
-          Add Pieces Manually
+          Add Pieces
         </button>
       </div>
     </div>

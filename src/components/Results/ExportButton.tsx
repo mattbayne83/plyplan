@@ -17,6 +17,7 @@ export function ExportButton({ targetRef, sheetIndex }: ExportButtonProps) {
       const dataUrl = await toPng(targetRef.current, {
         backgroundColor: '#ffffff',
         pixelRatio: 2,
+        fontEmbedCSS: '',
       })
       const link = document.createElement('a')
       link.download = `cut-sheet-${sheetIndex + 1}.png`

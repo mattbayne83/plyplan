@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { X, Plus, Minus } from 'lucide-react'
 import { useState } from 'react'
 import type { Piece } from '../../types/cutSheet'
 import type { ValidationError } from '../../utils/validation'
@@ -68,7 +68,7 @@ export function PieceCard({ piece, index, errors = [], onEnterOnLastRow }: Piece
 
       {/* Row 2: Width x Height + Qty */}
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0">
           <input
             type="text"
             value={widthInput}
@@ -79,7 +79,7 @@ export function PieceCard({ piece, index, errors = [], onEnterOnLastRow }: Piece
               handleKeyDown(e)
             }}
             placeholder="W"
-            className="w-full bg-surface-raised text-[15px] text-text text-center outline-none placeholder:text-text-muted focus:ring-1 focus:ring-primary/30 rounded-[var(--radius-input)] px-2 py-2.5 border border-border"
+            className="w-16 bg-surface-raised text-[15px] text-text text-center outline-none placeholder:text-text-muted focus:ring-1 focus:ring-primary/30 rounded-[var(--radius-input)] px-1 py-2.5 border border-border"
           />
           <span className="text-text-muted text-[13px] flex-shrink-0">×</span>
           <input
@@ -92,21 +92,37 @@ export function PieceCard({ piece, index, errors = [], onEnterOnLastRow }: Piece
               handleKeyDown(e)
             }}
             placeholder="H"
-            className="w-full bg-surface-raised text-[15px] text-text text-center outline-none placeholder:text-text-muted focus:ring-1 focus:ring-primary/30 rounded-[var(--radius-input)] px-2 py-2.5 border border-border"
+            className="w-16 bg-surface-raised text-[15px] text-text text-center outline-none placeholder:text-text-muted focus:ring-1 focus:ring-primary/30 rounded-[var(--radius-input)] px-1 py-2.5 border border-border"
           />
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <span className="text-text-muted text-[13px]">qty</span>
-          <input
-            type="number"
-            min={1}
-            value={piece.quantity}
-            onChange={(e) =>
-              updatePiece(piece.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) })
-            }
-            onKeyDown={handleKeyDown}
-            className="w-14 bg-surface-raised text-[15px] text-text text-center outline-none placeholder:text-text-muted focus:ring-1 focus:ring-primary/30 rounded-[var(--radius-input)] px-2 py-2.5 border border-border"
-          />
+        <div className="flex items-center flex-shrink-0 ml-auto mr-1">
+          <span className="text-text-muted text-[13px] mr-2">qty</span>
+          <div className="flex items-center items-stretch bg-surface-raised rounded-[var(--radius-input)] border border-border">
+            <button
+              type="button"
+              onClick={() => updatePiece(piece.id, { quantity: Math.max(1, piece.quantity - 1) })}
+              className="px-2.5 py-1.5 text-text-muted hover:bg-surface hover:text-text active:bg-primary-light transition-colors border-r border-border rounded-l-[var(--radius-input)] flex items-center justify-center p-2.5"
+            >
+              <Minus size={16} />
+            </button>
+            <input
+              type="number"
+              min={1}
+              value={piece.quantity}
+              onChange={(e) =>
+                updatePiece(piece.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) })
+              }
+              onKeyDown={handleKeyDown}
+              className="w-12 bg-transparent text-[15px] font-medium text-text text-center outline-none placeholder:text-text-muted focus:ring-inset focus:ring-1 focus:ring-primary/30 py-1.5 appearance-none"
+            />
+            <button
+              type="button"
+              onClick={() => updatePiece(piece.id, { quantity: piece.quantity + 1 })}
+              className="px-2.5 py-1.5 text-text-muted hover:bg-surface hover:text-text active:bg-primary-light transition-colors border-l border-border rounded-r-[var(--radius-input)] flex items-center justify-center p-2.5"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
