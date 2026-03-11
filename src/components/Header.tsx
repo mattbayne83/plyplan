@@ -13,7 +13,7 @@ export function Header() {
           <line x1="10" y1="2" x2="10" y2="26" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 2" />
           <line x1="2" y1="14" x2="26" y2="14" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 2" />
         </svg>
-        <h1 className="text-[18px] font-semibold text-text">Plyplan</h1>
+        <h1 className="text-[18px] font-semibold text-text">plyplan</h1>
       </div>
       <button
         onClick={() => setSettingsOpen(!settingsOpen)}

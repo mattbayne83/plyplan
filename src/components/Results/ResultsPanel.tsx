@@ -3,7 +3,6 @@ import { Maximize2 } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { SheetView } from './SheetView'
 import { ExportButton } from './ExportButton'
-import { HeroAnswer } from './HeroAnswer'
 import { ShoppingSummary } from './ShoppingSummary'
 import { UnplacedPieces } from './UnplacedPieces'
 
@@ -20,9 +19,8 @@ export function ResultsPanel() {
 
   return (
     <div className="bg-surface rounded-[var(--radius-card)] border border-border overflow-hidden">
-      {/* Hero answer + shopping summary */}
-      <div className="border-b border-border">
-        <HeroAnswer result={result} />
+      {/* Shopping summary */}
+      <div className="border-b border-border bg-surface-raised/50">
         <ShoppingSummary result={result} />
       </div>
 

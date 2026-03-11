@@ -20,7 +20,7 @@ export function PieceTable() {
 
   return (
     <div className="bg-surface rounded-[var(--radius-card)] border border-border overflow-hidden">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+      <div className="px-3 py-2.5 border-b border-border flex items-center justify-between">
         <h2 className="text-[13px] font-semibold text-text-secondary uppercase tracking-wide">
           Pieces
           <span className="text-text-muted font-normal ml-1.5 normal-case">({pieces.length})</span>
@@ -37,7 +37,7 @@ export function PieceTable() {
       </div>
 
       {/* Card-based layout */}
-      <div className="p-3 space-y-2">
+      <div className="px-3 py-2.5 space-y-1.5">
         {pieces.map((piece, i) => (
           <PieceCard
             key={piece.id}
@@ -52,9 +52,9 @@ export function PieceTable() {
       <div className="px-3 pb-3">
         <button
           onClick={addPiece}
-          className="w-full flex items-center justify-center gap-2 text-[15px] text-primary font-medium rounded-[var(--radius-button)] py-3 px-4 border border-dashed border-primary/30 hover:bg-primary-light transition-colors"
+          className="w-full flex items-center justify-center gap-2 text-[14px] text-primary font-medium rounded-[var(--radius-button)] py-2.5 px-3 border border-dashed border-primary/30 hover:bg-primary-light transition-colors"
         >
-          <Plus size={18} />
+          <Plus size={16} />
           Add piece
         </button>
       </div>
