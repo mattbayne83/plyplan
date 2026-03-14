@@ -87,7 +87,15 @@ function buildResults(
   }
 }
 
-// ─── MINIMIZE WASTE: Best-area-fit guillotine ─────────────────────────────
+// ─── MINIMIZE WASTE: Maximal rectangles best-area-fit ───────────────────────
+//
+// Unlike guillotine splitting (which binary-partitions each rect into two
+// non-overlapping children), maxrects maintains a list of *overlapping*
+// maximal free rectangles. When a piece is placed, every free rect that
+// overlaps the placed piece is split into up to 4 sub-rects (above, below,
+// left, right of the piece). Then any rect fully contained within another
+// is pruned. This preserves large contiguous free areas that guillotine
+// splitting would fragment away.
 
 function bestAreaPack(items: ExpandedItem[], config: PackerConfig): PackerResult {
   const { sheetWidth, sheetHeight, kerfWidth } = config
@@ -123,29 +131,64 @@ function bestAreaPack(items: ExpandedItem[], config: PackerConfig): PackerResult
     return { sheetIdx, rectIdx, x: rect.x, y: rect.y, w: itemW, h: itemH, rotated, score: leftover }
   }
 
-  function splitRect(rect: FreeRect, pw: number, ph: number, kerf: number): FreeRect[] {
-    const results: FreeRect[] = []
-    const consumedW = pw + kerf
-    const consumedH = ph + kerf
+  // Split all free rects that overlap the placed piece, then prune contained rects
+  function splitFreeRects(freeRects: FreeRect[], px: number, py: number, pw: number, ph: number, kerf: number): FreeRect[] {
+    const placedRight = px + pw + kerf
+    const placedBottom = py + ph + kerf
+    const newRects: FreeRect[] = []
 
-    const rightA: FreeRect = { x: rect.x + consumedW, y: rect.y, w: rect.w - consumedW, h: consumedH }
-    const bottomA: FreeRect = { x: rect.x, y: rect.y + consumedH, w: rect.w, h: rect.h - consumedH }
-    const rightB: FreeRect = { x: rect.x + consumedW, y: rect.y, w: rect.w - consumedW, h: rect.h }
-    const bottomB: FreeRect = { x: rect.x, y: rect.y + consumedH, w: consumedW, h: rect.h - consumedH }
+    for (const rect of freeRects) {
+      const rectRight = rect.x + rect.w
+      const rectBottom = rect.y + rect.h
 
-    const maxAreaA = Math.max(
-      rightA.w > 0 && rightA.h > 0 ? rightA.w * rightA.h : 0,
-      bottomA.w > 0 && bottomA.h > 0 ? bottomA.w * bottomA.h : 0
-    )
-    const maxAreaB = Math.max(
-      rightB.w > 0 && rightB.h > 0 ? rightB.w * rightB.h : 0,
-      bottomB.w > 0 && bottomB.h > 0 ? bottomB.w * bottomB.h : 0
-    )
+      // No overlap — keep as-is
+      if (px >= rectRight || placedRight <= rect.x || py >= rectBottom || placedBottom <= rect.y) {
+        newRects.push(rect)
+        continue
+      }
 
-    const [right, bottom] = maxAreaA >= maxAreaB ? [rightA, bottomA] : [rightB, bottomB]
-    if (right.w > 0 && right.h > 0) results.push(right)
-    if (bottom.w > 0 && bottom.h > 0) results.push(bottom)
-    return results
+      // Overlaps — split into up to 4 sub-rects around the placed piece
+      // Left strip
+      if (px > rect.x) {
+        newRects.push({ x: rect.x, y: rect.y, w: px - rect.x, h: rect.h })
+      }
+      // Right strip
+      if (placedRight < rectRight) {
+        newRects.push({ x: placedRight, y: rect.y, w: rectRight - placedRight, h: rect.h })
+      }
+      // Top strip
+      if (py > rect.y) {
+        newRects.push({ x: rect.x, y: rect.y, w: rect.w, h: py - rect.y })
+      }
+      // Bottom strip
+      if (placedBottom < rectBottom) {
+        newRects.push({ x: rect.x, y: placedBottom, w: rect.w, h: rectBottom - placedBottom })
+      }
+    }
+
+    // Prune rects fully contained within another
+    return pruneContained(newRects)
+  }
+
+  function pruneContained(rects: FreeRect[]): FreeRect[] {
+    const result: FreeRect[] = []
+    for (let i = 0; i < rects.length; i++) {
+      let contained = false
+      for (let j = 0; j < rects.length; j++) {
+        if (i === j) continue
+        if (
+          rects[i].x >= rects[j].x &&
+          rects[i].y >= rects[j].y &&
+          rects[i].x + rects[i].w <= rects[j].x + rects[j].w &&
+          rects[i].y + rects[i].h <= rects[j].y + rects[j].h
+        ) {
+          contained = true
+          break
+        }
+      }
+      if (!contained) result.push(rects[i])
+    }
+    return result
   }
 
   for (const item of items) {
@@ -199,9 +242,13 @@ function bestAreaPack(items: ExpandedItem[], config: PackerConfig): PackerResult
       color: item.color,
     })
 
-    const usedRect = sheet.freeRects[bestCandidate.rectIdx]
-    const newRects = splitRect(usedRect, bestCandidate.w, bestCandidate.h, kerfWidth)
-    sheet.freeRects.splice(bestCandidate.rectIdx, 1, ...newRects)
+    // Update free rects using maxrects splitting
+    sheet.freeRects = splitFreeRects(
+      sheet.freeRects,
+      bestCandidate.x, bestCandidate.y,
+      bestCandidate.w, bestCandidate.h,
+      kerfWidth
+    )
   }
 
   return buildResults(sheets, unplacedPieces, config)
