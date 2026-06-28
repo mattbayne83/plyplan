@@ -39,6 +39,28 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* App-shell touch behavior: the page scrolls but never pinch-zooms or
+   rubber-band-scrolls. pan-x pan-y disables pinch + double-tap zoom at the
+   compositor level (iOS 13+), beneath the JS guards in pageZoomGuards.ts. The
+   fullscreen diagram viewer opts back in with touch-action: none to own its
+   own pinch gesture. */
+body {
+  touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+}
+
+/* iOS Safari auto-zooms the page when a focused input's font-size is < 16px
+   and often never zooms back out (clips fixed UI). The JS guards can't catch
+   focus-zoom because it isn't a gesture — prevention is sizing the font at or
+   above the 16px threshold on small screens. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Hide scrollbar but allow scrolling */
 .scrollbar-hide {
   -ms-overflow-style: none;

@@ -12,6 +12,7 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 - Inter font (Google Fonts)
 - `@google/genai` — Gemini Vision API for photo extraction (optional)
 - `html-to-image` — PNG export
+- Vitest 4 + jsdom + Testing Library (`react` / `jest-dom` / `user-event`) — unit + component tests; `npm test` runs `vitest run`
 
 ## Architecture
 - Phone-first single-page vertical flow: Settings → Empty State / Photo + Pieces → Results
@@ -22,6 +23,7 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
   - **minimize-waste** — Best-area-fit guillotine (rotates freely, packs tightest)
   - **minimize-saw-changes** — Shelf packing (groups same-height pieces into horizontal strips, avoids rotation, fewer unique fence settings)
 - Visualization: SVG with responsive viewBox
+- Mobile zoom: app shell is locked against page pinch-zoom (`usePreventPageZoom` → `pageZoomGuards`); the only zoomable element is the full-screen `SawView` diagram, which owns its own pinch/pan/double-tap gestures via `useZoomPan` (`touch-action: none`). Math lives in pure, unit-tested `utils/zoomMath.ts`.
 - Design tokens: CSS variables in `index.css` `@theme` block + JS mirror in `src/styles/tokens.ts`
 
 ## Design System
@@ -39,11 +41,16 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 - `src/store/useAppStore.ts` — Main Zustand store (persisted)
 - `src/styles/tokens.ts` — JS-accessible design tokens + `PIECE_COLORS` array
 - `src/hooks/useAutoOptimize.ts` — Debounced auto-optimize hook (consumed in App.tsx)
+- `src/hooks/useZoomPan.ts` — Pinch/pan/double-tap/wheel gesture state for the SawView diagram
+- `src/hooks/usePreventPageZoom.ts` — Installs the page-zoom guards for the app shell's lifetime
 
 ### Algorithm & Utils
 - `src/utils/packer.ts` — Bin packing algorithms (guillotine + shelf)
 - `src/utils/units.ts` — Fraction parsing ("3-1/2" → 3.5) and display formatting
 - `src/utils/validation.ts` — Per-piece validation (zero dims, exceeds sheet, bad qty)
+- `src/utils/zoomMath.ts` — Pure zoom/pan geometry (clamp, focal-stable zoom, swipe-close); unit-tested
+- `src/utils/pageZoomGuards.ts` — Document-level guards blocking iOS page pinch-zoom + self-heal
+- `src/utils/resetPinchZoom.ts` — Viewport-meta snap-back to undo residual page zoom
 - `src/services/gemini.ts` — Gemini Vision API integration
 
 ### Components — Input
@@ -54,17 +61,20 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 - `src/components/PieceInput/PhotoPreview.tsx` — Extracted pieces review with inline dimension editing
 
 ### Components — Results
-- `src/components/Results/HeroAnswer.tsx` — "2 sheets" hero display (48px bold)
-- `src/components/Results/ShoppingSummary.tsx` — Cost summary with editable price
+- `src/components/Results/ShoppingSummary.tsx` — Hero sheet count + cost summary with editable price
 - `src/components/Results/UnplacedPieces.tsx` — Explains unplaced pieces with reasons
-- `src/components/Results/ResultsPanel.tsx` — Results container: Hero → Shopping → Unplaced → Sheet tabs → Diagram
+- `src/components/Results/ResultsPanel.tsx` — Results container: Shopping → Unplaced → Sheet tabs → Diagram (tap diagram to open SawView)
 - `src/components/Results/SheetView.tsx` — SVG cut sheet visualization
-- `src/components/Results/SawView.tsx` — Full-screen overlay with pinch-to-zoom
+- `src/components/Results/SawView.tsx` — Full-screen zoomable diagram viewer (pinch/double-tap/drag via `useZoomPan`)
 - `src/components/Results/ExportButton.tsx` — PNG export button
 
 ### Layout
 - `src/components/Header.tsx` — App header with settings toggle
 - `src/components/Settings/SettingsPanel.tsx` — Sheet size, kerf, units, price, optimization mode, API key
+
+### Testing
+- `src/test/setup.ts` — jest-dom matchers + an in-memory `localStorage` polyfill for store-backed tests
+- `*.test.ts(x)` colocated with source — `zoomMath`, `pageZoomGuards`, `resetPinchZoom`, `units` (unit); `SawView`, `ResultsPanel` (RTL)
 
 ## Docs
 - `docs/VISION.md` — Product vision, north star, "Two Moments" framework, competitive position
@@ -81,6 +91,11 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 - **SVG export needs HTML wrapper** — `html-to-image` `toPng` targets the div containing the SVG, not the SVG directly
 - **PIECE_COLORS in tokens.ts** — Store imports from `styles/tokens.ts`, not inline. Keep them in sync.
 - **Auto-optimize invalidation** — Changing pieces/settings sets `result` to null → hook detects and re-runs. Don't call `runOptimizer` directly from UI.
-- **SawView is a full-screen overlay** — z-50, fixed, renders outside main layout. Toggled via `sawViewOpen` store flag.
+- **SawView is a full-screen overlay** — z-50, fixed, renders outside main layout. Toggled via `sawViewOpen` store flag. It's the *only* element allowed to pinch-zoom (its surface sets `touch-action: none`); the rest of the shell is locked.
+- **Page zoom is globally blocked on touch** — `body` is `touch-action: pan-x pan-y` and `pageZoomGuards` preventDefaults iOS gestures. Any future "zoom this in place" UI must opt out with `touch-action: none` and handle its own gesture, or it won't zoom.
+- **iOS focus-zoom needs 16px inputs** — Inputs/textareas/selects are forced to 16px on `max-width: 767px` (index.css); dropping below re-introduces the un-recoverable focus-zoom the guards can't catch.
+- **"Tap to zoom" badge lives outside `sheetRef`** — The export target (`sheetRef`) wraps only `SheetView`; the badge is a sibling so it never appears in exported PNGs.
+- **`useZoomPan` wheel listener is a callback ref** — React's synthetic `onWheel` is passive and can't `preventDefault`; the hook attaches a native non-passive listener via a callback ref instead.
+- **Tests need a `localStorage` polyfill** — The persisted store touches `localStorage` at import; `src/test/setup.ts` provides an in-memory shim so jsdom component tests don't crash on import.
 - **`capture="environment"` is inconsistent** — Gracefully falls back to file picker on unsupported browsers
 - **ShoppingSummary inline edit** — Uses local component state for price editing, syncs to store on blur
