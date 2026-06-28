@@ -6,12 +6,14 @@ import { SawView } from './components/Results/SawView'
 import { EmptyState } from './components/EmptyState'
 import { useAppStore } from './store/useAppStore'
 import { useAutoOptimize } from './hooks/useAutoOptimize'
+import { usePreventPageZoom } from './hooks/usePreventPageZoom'
 
 function App() {
   const pieces = useAppStore((s) => s.pieces)
   const addPiece = useAppStore((s) => s.addPiece)
 
   useAutoOptimize()
+  usePreventPageZoom()
 
   const showEmptyState = pieces.length === 0
 
