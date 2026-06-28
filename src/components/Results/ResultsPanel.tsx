@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { Maximize2 } from 'lucide-react'
+import { Maximize2, ZoomIn } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { SheetView } from './SheetView'
 import { ExportButton } from './ExportButton'
@@ -65,10 +65,30 @@ export function ResultsPanel() {
         </div>
       </div>
 
-      {/* Sheet diagram */}
+      {/* Sheet diagram — tap to open the zoomable full-screen viewer.
+          The export target (sheetRef) wraps only the diagram, so the
+          "Tap to zoom" badge never lands in exported PNGs. */}
       {activeSheet && (
-        <div className="p-3" ref={sheetRef}>
-          <SheetView sheet={activeSheet} />
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Open full-screen zoomable view"
+          onClick={() => setSawViewOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setSawViewOpen(true)
+            }
+          }}
+          className="relative cursor-zoom-in group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        >
+          <div className="p-3" ref={sheetRef}>
+            <SheetView sheet={activeSheet} />
+          </div>
+          <span className="pointer-events-none absolute top-4 right-4 flex items-center gap-1 rounded-full bg-text/70 px-2 py-1 text-[11px] font-medium text-white opacity-80 transition-opacity group-hover:opacity-100">
+            <ZoomIn size={12} />
+            Tap to zoom
+          </span>
         </div>
       )}
     </div>
