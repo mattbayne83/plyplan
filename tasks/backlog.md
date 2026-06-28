@@ -19,7 +19,7 @@ The current app was built desktop-first. These items flip it to phone-first — 
 
 ### Moment 2: The Diagram
 - [x] **Print-ready output** — PNG export via `html-to-image`. (`ExportButton.tsx`) *(PDF deferred to P2)*
-- [x] **Phone-at-the-saw view** — Full-screen overlay, pinch-to-zoom via CSS transform + `touch-action: manipulation`. Sheet tabs, landscape hint. (`SawView.tsx`)
+- [x] **Phone-at-the-saw view** — Full-screen overlay with real gesture zoom: pinch, one-finger pan, double-tap toggle, swipe-down-to-close (wheel + double-click on desktop). The app shell is locked against page pinch-zoom so only the diagram zooms. Tap the inline diagram to open; reset-zoom control. (`SawView.tsx`, `useZoomPan.ts`, `pageZoomGuards.ts`)
 
 ### Mobile UX
 - [x] **Mobile-first layout** — Card-based piece input (`PieceCard.tsx`), full-width photo capture, 44px touch targets, `max-w-lg` container. (`App.tsx`, `PieceTable.tsx`)
@@ -40,7 +40,7 @@ Features that make the sheet count answer trustworthy and the diagram useful.
 
 ### Algorithm Quality
 - [ ] **Hybrid algorithm** — Run both guillotine and shelf, return the better result. Small compute cost, potentially 1 fewer sheet on edge cases. The sheet count must be right.
-- [ ] **Benchmark suite** — Standard test sets (e.g., 77 pieces on 4x8 sheets). Compare against MaxCut results. Track regression. If we say "2 sheets" and MaxCut says "1," we've lost trust permanently.
+- [ ] **Benchmark suite** — Standard test sets (e.g., 77 pieces on 4x8 sheets). Compare against MaxCut results. Track regression. If we say "2 sheets" and MaxCut says "1," we've lost trust permanently. *(Vitest harness now in place to build this on — see CLAUDE.md "Testing".)*
 - [ ] **Guillotine constraint enforcement** — Verify all cuts can be made with a panel saw (straight through). Non-guillotine-safe layouts look good on screen but can't be executed in a real shop.
 
 ### Grain Direction
