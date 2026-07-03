@@ -29,15 +29,32 @@ interface PlacementCandidate {
 }
 
 /**
- * Main entry point — dispatches to the appropriate algorithm based on mode.
+ * Main entry point — dispatches by mode.
+ *
+ * minimize-saw-changes is a deliberate trade (simpler cuts over material),
+ * so it always uses shelf packing. minimize-waste is hybrid: both algorithms
+ * run and the better result wins — shelf occasionally beats maxrects on
+ * uniform pieces, and the sheet count must be right.
  */
 export function guillotinePack(pieces: Piece[], config: PackerConfig): PackerResult {
-  const items = expandPieces(pieces)
-
   if (config.mode === 'minimize-saw-changes') {
-    return shelfPack(items, config)
+    return shelfPack(expandPieces(pieces), config)
   }
-  return bestAreaPack(items, config)
+  // expandPieces is called per-algorithm: bestAreaPack sorts its items array
+  // in place, so the two runs must not share it.
+  const area = bestAreaPack(expandPieces(pieces), config)
+  const shelf = shelfPack(expandPieces(pieces), config)
+  return betterResult(area, shelf)
+}
+
+/** Fewer unplaced pieces → fewer sheets to buy → fewer bins → less waste. */
+function betterResult(a: PackerResult, b: PackerResult): PackerResult {
+  if (a.unplacedPieces.length !== b.unplacedPieces.length) {
+    return a.unplacedPieces.length < b.unplacedPieces.length ? a : b
+  }
+  if (a.newSheets !== b.newSheets) return a.newSheets < b.newSheets ? a : b
+  if (a.totalSheets !== b.totalSheets) return a.totalSheets < b.totalSheets ? a : b
+  return a.totalWastePercent <= b.totalWastePercent ? a : b
 }
 
 function expandPieces(pieces: Piece[]): ExpandedItem[] {
@@ -58,17 +75,22 @@ function expandPieces(pieces: Piece[]): ExpandedItem[] {
 }
 
 function buildResults(
-  sheets: Array<{ placements: Placement[] }>,
-  unplacedPieces: PackerResult['unplacedPieces'],
-  config: PackerConfig
+  sheets: Array<{ width: number; height: number; isOffcut: boolean; placements: Placement[] }>,
+  unplacedPieces: PackerResult['unplacedPieces']
 ): PackerResult {
-  const sheetArea = config.sheetWidth * config.sheetHeight
-  const sheetResults: SheetResult[] = sheets.map((sheet, i) => {
+  // Offcuts are pre-seeded as candidate bins; drop any that ended up unused.
+  const usedSheets = sheets.filter((s) => s.placements.length > 0)
+
+  const sheetResults: SheetResult[] = usedSheets.map((sheet, i) => {
+    const sheetArea = sheet.width * sheet.height
     const usedArea = sheet.placements.reduce((sum, p) => sum + p.width * p.height, 0)
     const wastePercent = ((sheetArea - usedArea) / sheetArea) * 100
     return {
       id: generateId(),
       sheetIndex: i,
+      width: sheet.width,
+      height: sheet.height,
+      isOffcut: sheet.isOffcut,
       placements: sheet.placements,
       wastePercent,
       usedArea,
@@ -76,12 +98,13 @@ function buildResults(
   })
 
   const totalUsedArea = sheetResults.reduce((sum, s) => sum + s.usedArea, 0)
-  const totalArea = sheetResults.length * sheetArea
+  const totalArea = sheetResults.reduce((sum, s) => sum + s.width * s.height, 0)
   const totalWastePercent = totalArea > 0 ? ((totalArea - totalUsedArea) / totalArea) * 100 : 0
 
   return {
     sheets: sheetResults,
     totalSheets: sheetResults.length,
+    newSheets: sheetResults.filter((s) => !s.isOffcut).length,
     totalWastePercent,
     unplacedPieces,
   }
@@ -99,6 +122,7 @@ function buildResults(
 
 function bestAreaPack(items: ExpandedItem[], config: PackerConfig): PackerResult {
   const { sheetWidth, sheetHeight, kerfWidth } = config
+  const offcuts = config.offcuts ?? []
 
   // Sort by area descending, tie-break by max dimension
   items.sort((a, b) => {
@@ -108,11 +132,27 @@ function bestAreaPack(items: ExpandedItem[], config: PackerConfig): PackerResult
     return Math.max(b.width, b.height) - Math.max(a.width, a.height)
   })
 
-  const sheets: Array<{ freeRects: FreeRect[]; placements: Placement[] }> = []
+  const sheets: Array<{ width: number; height: number; isOffcut: boolean; freeRects: FreeRect[]; placements: Placement[] }> = []
   const unplacedPieces: PackerResult['unplacedPieces'] = []
+
+  // Seed offcuts as available bins. New full sheets are only opened when
+  // nothing fits, so scrap stock is consumed first; unused offcuts are
+  // dropped in buildResults.
+  for (const offcut of offcuts) {
+    sheets.push({
+      width: offcut.width,
+      height: offcut.height,
+      isOffcut: true,
+      freeRects: [{ x: 0, y: 0, w: offcut.width, h: offcut.height }],
+      placements: [],
+    })
+  }
 
   function createSheet() {
     sheets.push({
+      width: sheetWidth,
+      height: sheetHeight,
+      isOffcut: false,
       freeRects: [{ x: 0, y: 0, w: sheetWidth, h: sheetHeight }],
       placements: [],
     })
@@ -192,36 +232,35 @@ function bestAreaPack(items: ExpandedItem[], config: PackerConfig): PackerResult
   }
 
   for (const item of items) {
-    const fitsNormal = item.width <= sheetWidth && item.height <= sheetHeight
-    const fitsRotated = item.height <= sheetWidth && item.width <= sheetHeight
-    if (!fitsNormal && !fitsRotated) {
-      unplacedPieces.push({ pieceId: item.pieceId, instanceIndex: item.instanceIndex })
-      continue
-    }
-
+    // Bins vary in size once offcuts exist — tryFit bounds-checks per rect,
+    // so scan both orientations everywhere.
     let bestCandidate: PlacementCandidate | null = null
 
     for (let si = 0; si < sheets.length; si++) {
       const sheet = sheets[si]
       for (let ri = 0; ri < sheet.freeRects.length; ri++) {
         const rect = sheet.freeRects[ri]
-        if (fitsNormal) {
-          const c = tryFit(item.width, item.height, rect, false, si, ri)
-          if (c && (bestCandidate === null || c.score < bestCandidate.score)) bestCandidate = c
-        }
-        if (fitsRotated) {
-          const c = tryFit(item.height, item.width, rect, true, si, ri)
-          if (c && (bestCandidate === null || c.score < bestCandidate.score)) bestCandidate = c
+        const c = tryFit(item.width, item.height, rect, false, si, ri)
+        if (c && (bestCandidate === null || c.score < bestCandidate.score)) bestCandidate = c
+        if (item.width !== item.height) {
+          const cr = tryFit(item.height, item.width, rect, true, si, ri)
+          if (cr && (bestCandidate === null || cr.score < bestCandidate.score)) bestCandidate = cr
         }
       }
     }
 
     if (!bestCandidate) {
-      createSheet()
-      const si = sheets.length - 1
-      const rect = sheets[si].freeRects[0]
-      if (fitsNormal) bestCandidate = tryFit(item.width, item.height, rect, false, si, 0)
-      if (!bestCandidate && fitsRotated) bestCandidate = tryFit(item.height, item.width, rect, true, si, 0)
+      // Only open a new full sheet if the item can actually fit one —
+      // otherwise we'd strand an empty sheet in the results.
+      const fitsNormal = item.width <= sheetWidth && item.height <= sheetHeight
+      const fitsRotated = item.height <= sheetWidth && item.width <= sheetHeight
+      if (fitsNormal || fitsRotated) {
+        createSheet()
+        const si = sheets.length - 1
+        const rect = sheets[si].freeRects[0]
+        if (fitsNormal) bestCandidate = tryFit(item.width, item.height, rect, false, si, 0)
+        if (!bestCandidate && fitsRotated) bestCandidate = tryFit(item.height, item.width, rect, true, si, 0)
+      }
     }
 
     if (!bestCandidate) {
@@ -251,7 +290,7 @@ function bestAreaPack(items: ExpandedItem[], config: PackerConfig): PackerResult
     )
   }
 
-  return buildResults(sheets, unplacedPieces, config)
+  return buildResults(sheets, unplacedPieces)
 }
 
 // ─── MINIMIZE SAW CHANGES: Shelf packing ──────────────────────────────────
@@ -277,15 +316,22 @@ interface Shelf {
 
 function shelfPack(items: ExpandedItem[], config: PackerConfig): PackerResult {
   const { sheetWidth, sheetHeight, kerfWidth } = config
+  const offcuts = config.offcuts ?? []
   const unplacedPieces: PackerResult['unplacedPieces'] = []
 
   // Normalize items: for each item, pick an orientation where height is the
   // smaller dimension (so shelves are short horizontal strips). This reduces
   // the number of unique shelf heights.
   // Exception: if the piece only fits in one orientation, use that.
+  // An orientation counts as fitting if any stock (full sheet or offcut)
+  // can hold it.
   const normalized = items.map((item) => {
-    const fitsNormal = item.width <= sheetWidth && item.height <= sheetHeight
-    const fitsRotated = item.height <= sheetWidth && item.width <= sheetHeight
+    const fitsNormal =
+      (item.width <= sheetWidth && item.height <= sheetHeight) ||
+      offcuts.some((o) => item.width <= o.width && item.height <= o.height)
+    const fitsRotated =
+      (item.height <= sheetWidth && item.width <= sheetHeight) ||
+      offcuts.some((o) => item.height <= o.width && item.width <= o.height)
 
     if (!fitsNormal && !fitsRotated) return { ...item, placeable: false, rotated: false }
 
@@ -319,21 +365,28 @@ function shelfPack(items: ExpandedItem[], config: PackerConfig): PackerResult {
   }
 
   // Pack into sheets
-  const sheets: Array<{ shelves: Shelf[]; cursorY: number; placements: Placement[] }> = []
+  const sheets: Array<{ width: number; height: number; isOffcut: boolean; shelves: Shelf[]; cursorY: number; placements: Placement[] }> = []
+
+  // Seed offcuts as available bins (used before new full sheets; unused
+  // offcuts are dropped in buildResults).
+  for (const offcut of offcuts) {
+    sheets.push({ width: offcut.width, height: offcut.height, isOffcut: true, shelves: [], cursorY: 0, placements: [] })
+  }
 
   function createSheet() {
-    sheets.push({ shelves: [], cursorY: 0, placements: [] })
+    sheets.push({ width: sheetWidth, height: sheetHeight, isOffcut: false, shelves: [], cursorY: 0, placements: [] })
     return sheets.length - 1
   }
 
   function findOrCreateShelf(itemW: number, itemH: number): { sheetIdx: number; shelf: Shelf } | null {
     const hk = heightKey(itemH)
-    const hasRoom = (shelf: Shelf) => shelf.cursorX + itemW + kerfWidth <= sheetWidth + kerfWidth
+    const hasRoom = (shelf: Shelf, binWidth: number) =>
+      shelf.cursorX + itemW + kerfWidth <= binWidth + kerfWidth
 
     // 1. Exact height match — ideal, no wasted vertical space
     for (let si = 0; si < sheets.length; si++) {
       for (const shelf of sheets[si].shelves) {
-        if (heightKey(shelf.height) === hk && hasRoom(shelf)) {
+        if (heightKey(shelf.height) === hk && hasRoom(shelf, sheets[si].width)) {
           return { sheetIdx: si, shelf }
         }
       }
@@ -344,7 +397,7 @@ function shelfPack(items: ExpandedItem[], config: PackerConfig): PackerResult {
     let bestTaller: { sheetIdx: number; shelf: Shelf; gap: number } | null = null
     for (let si = 0; si < sheets.length; si++) {
       for (const shelf of sheets[si].shelves) {
-        if (shelf.height >= itemH && hasRoom(shelf)) {
+        if (shelf.height >= itemH && hasRoom(shelf, sheets[si].width)) {
           const gap = shelf.height - itemH
           if (gap > 0 && (!bestTaller || gap < bestTaller.gap)) {
             bestTaller = { sheetIdx: si, shelf, gap }
@@ -357,8 +410,8 @@ function shelfPack(items: ExpandedItem[], config: PackerConfig): PackerResult {
     // 3. Open a new shelf on an existing sheet
     for (let si = 0; si < sheets.length; si++) {
       const sheet = sheets[si]
-      const remainingH = sheetHeight - sheet.cursorY
-      if (remainingH >= itemH && sheetWidth >= itemW) {
+      const remainingH = sheet.height - sheet.cursorY
+      if (remainingH >= itemH && sheet.width >= itemW) {
         const shelf: Shelf = {
           y: sheet.cursorY,
           height: itemH,
@@ -371,7 +424,9 @@ function shelfPack(items: ExpandedItem[], config: PackerConfig): PackerResult {
       }
     }
 
-    // 4. New sheet
+    // 4. New full sheet — but only if the item actually fits one (it may
+    //    only fit an offcut that's already full).
+    if (itemW > sheetWidth || itemH > sheetHeight) return null
     const si = createSheet()
     const shelf: Shelf = {
       y: 0,
@@ -409,5 +464,5 @@ function shelfPack(items: ExpandedItem[], config: PackerConfig): PackerResult {
     sheets[sheetIdx].placements.push(placement)
   }
 
-  return buildResults(sheets, unplacedPieces, config)
+  return buildResults(sheets, unplacedPieces)
 }

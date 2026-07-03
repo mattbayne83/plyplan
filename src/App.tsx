@@ -7,11 +7,13 @@ import { EmptyState } from './components/EmptyState'
 import { useAppStore } from './store/useAppStore'
 import { useAutoOptimize } from './hooks/useAutoOptimize'
 import { usePreventPageZoom } from './hooks/usePreventPageZoom'
+import { useShareImport } from './hooks/useShareImport'
 
 function App() {
   const pieces = useAppStore((s) => s.pieces)
   const addPiece = useAppStore((s) => s.addPiece)
 
+  useShareImport()
   useAutoOptimize()
   usePreventPageZoom()
 

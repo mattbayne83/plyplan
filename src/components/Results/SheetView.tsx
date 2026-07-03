@@ -14,11 +14,12 @@ const LABEL_FONT_SIZE = 3.5
 const DIM_FONT_SIZE = 2.8
 
 export function SheetView({ sheet }: SheetViewProps) {
-  const sheetWidth = useAppStore((s) => s.sheetWidth)
-  const sheetHeight = useAppStore((s) => s.sheetHeight)
   const pieces = useAppStore((s) => s.pieces)
   const [hoveredPieceIdx, setHoveredPieceIdx] = useState<number | null>(null)
 
+  // Sheets can differ in size once offcuts are in play — use this sheet's dims
+  const sheetWidth = sheet.width
+  const sheetHeight = sheet.height
   const viewW = sheetWidth + PADDING * 2
   const viewH = sheetHeight + PADDING * 2
 
@@ -153,7 +154,7 @@ export function SheetView({ sheet }: SheetViewProps) {
           </div>
         )}
         <span className="text-text-muted flex-shrink-0">
-          {formatDimension(sheetWidth)} × {formatDimension(sheetHeight)} sheet
+          {formatDimension(sheetWidth)} × {formatDimension(sheetHeight)} {sheet.isOffcut ? 'offcut' : 'sheet'}
         </span>
       </div>
     </div>

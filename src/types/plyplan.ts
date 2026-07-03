@@ -11,6 +11,13 @@ export interface Piece {
   color: string
 }
 
+/** A leftover piece of stock already in the shop, usable before buying new sheets. */
+export interface StockSheet {
+  id: string
+  width: number
+  height: number
+}
+
 export interface Placement {
   pieceId: PieceId
   instanceIndex: number
@@ -26,6 +33,9 @@ export interface Placement {
 export interface SheetResult {
   id: SheetId
   sheetIndex: number
+  width: number
+  height: number
+  isOffcut: boolean
   placements: Placement[]
   wastePercent: number
   usedArea: number
@@ -36,11 +46,14 @@ export interface PackerConfig {
   sheetHeight: number
   kerfWidth: number
   mode: OptimizationMode
+  offcuts?: StockSheet[]
 }
 
 export interface PackerResult {
   sheets: SheetResult[]
   totalSheets: number
+  /** Full-size sheets to buy — excludes offcuts already in the shop. */
+  newSheets: number
   totalWastePercent: number
   unplacedPieces: Array<{ pieceId: PieceId; instanceIndex: number }>
 }

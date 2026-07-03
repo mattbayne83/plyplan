@@ -39,7 +39,7 @@ The current app was built desktop-first. These items flip it to phone-first — 
 Features that make the sheet count answer trustworthy and the diagram useful.
 
 ### Algorithm Quality
-- [ ] **Hybrid algorithm** — Run both guillotine and shelf, return the better result. Small compute cost, potentially 1 fewer sheet on edge cases. The sheet count must be right.
+- [x] **Hybrid algorithm** — minimize-waste mode runs both maxrects and shelf, returns the better result (fewer unplaced → fewer sheets to buy → less waste). minimize-saw-changes stays pure shelf by design. (`packer.ts`)
 - [ ] **Benchmark suite** — Standard test sets (e.g., 77 pieces on 4x8 sheets). Compare against MaxCut results. Track regression. If we say "2 sheets" and MaxCut says "1," we've lost trust permanently. *(Vitest harness now in place to build this on — see CLAUDE.md "Testing".)*
 - [ ] **Guillotine constraint enforcement** — Verify all cuts can be made with a panel saw (straight through). Non-guillotine-safe layouts look good on screen but can't be executed in a real shop.
 
@@ -48,35 +48,34 @@ Features that make the sheet count answer trustworthy and the diagram useful.
 - [ ] **Visual grain indicator** — Arrow or line pattern on pieces in the diagram so you know orientation at the saw.
 
 ### Existing Stock
-- [ ] **Use partial sheets** — "I have a 24x48 offcut in the garage." Optimizer incorporates it. Might save buying a whole sheet — directly impacts the purchase decision (Moment 1).
+- [x] **Use partial sheets** — "I have a 24x48 offcut in the garage." Offcuts entered in Settings are packed before new sheets; shopping summary counts only sheets to buy. (`SettingsPanel.tsx`, `packer.ts`, `ShoppingSummary.tsx`) *(Shipped from beta-tester feedback)*
 
 ### Cost
 - [x] **Material cost estimation** — User sets price per sheet → total cost calculated. Implemented in `ShoppingSummary.tsx` with inline editable price. *(Shipped in P0 sprint)*
 
 ---
 
-## P2 — Keep Coming Back (v2.x)
+## P2 — Make the Session Count (v2.x)
 
-Evolve from single-use to a tool you reach for every project.
+> **Direction (2026-07):** Plyplan is a single-session app — no cross-visit
+> memory or persistence (store is sessionStorage-only). The plan leaves the
+> app via export/share, not via saved state. Items assuming stored projects
+> moved to Icebox.
 
-### Projects
-- [ ] **Project library** — Save, name, duplicate. "That bookshelf from February." List view with piece count, sheet count, date.
-- [ ] **Undo/redo** — History stack for piece edits and settings. Familiar pattern.
-
-### Offcuts
-- [ ] **Offcut inventory** — After optimization, catalog leftover pieces with dimensions. "Keep" toggle.
-- [ ] **Cross-project offcut reuse** — Starting a new project? "You have a 24x36 offcut from the bookshelf build."
+### Session Output
+- [x] **Leftover report** — "Leftovers worth keeping" lists the usable offcuts this job produces (disjoint rects, ≥4" side & ≥1 sq ft), with a nudge to re-enter them as Offcuts On Hand next visit. Included in the exported plan. (`leftovers.ts`, `LeftoverReport.tsx`)
+- [ ] **Undo/redo** — History stack for piece edits and settings. Familiar pattern. (Within-session only.)
 
 ### Materials
 - [ ] **Material library** — Saved sheet goods: name, size, thickness, price, grain. Pre-populated with common US sizes.
 - [ ] **Multi-material projects** — Mix 3/4" ply + 1/4" MDF + hardwood backer in one project. Optimizer groups by material.
 
 ### Sharing
-- [ ] **Shareable project link** — Text your spouse: "we need 2 sheets, here's the plan." Read-only URL, no account needed.
-- [ ] **Cloud sync** — Optional. Work on laptop, reference on phone at the saw.
+- [x] **Shareable project link** — Pieces + settings + offcuts encode into `#s=` in the URL (never the API key). Native share sheet on phones, clipboard elsewhere; opening the link imports the plan. The URL is the save file — opt-in persistence without storing anything. (`share.ts`, `ShareButton.tsx`, `useShareImport.ts`)
 
 ### Export
-- [ ] **PDF export** — Multi-page: page 1 = shopping list + summary, page 2+ = cut diagrams. Print-ready for the shop wall.
+- [x] **Full-plan export** — One tap downloads the whole plan as a single tall PNG: shopping summary, every sheet diagram, unplaced warnings, leftover report. Print-ready for the shop wall. (`ExportButton.tsx`) *(PDF variant still open below)*
+- [ ] **PDF export** — Same report as a paginated PDF (would need a pdf lib; PNG covers most printing needs today).
 - [ ] **Import/export formats** — CSV, JSON. Interop with OpenCutList and other tools.
 
 ### Manual Adjustment
@@ -100,6 +99,9 @@ AI becomes a workflow partner, not just an input method.
 
 ## Icebox (Good Ideas, No Timeline)
 
+- [ ] **Project library** — Save, name, duplicate projects. *(Iceboxed: conflicts with single-session direction.)*
+- [ ] **Cross-project offcut reuse** — "You have a 24x36 offcut from the bookshelf build." *(Iceboxed: needs cross-visit memory.)*
+- [ ] **Cloud sync** — Work on laptop, reference on phone. *(Iceboxed: single-session direction; shareable link covers the hand-off.)*
 - [ ] **Dark mode** — Respect `prefers-color-scheme`, manual toggle.
 - [ ] **Metric-first locale** — Auto-detect locale, default to mm for non-US users.
 - [ ] **PWA / offline mode** — Service worker for offline use in shops with poor connectivity. High-value for the phone-at-the-saw use case.

@@ -11,6 +11,7 @@ export function useAutoOptimize() {
   const sheetHeight = useAppStore((s) => s.sheetHeight)
   const kerfWidth = useAppStore((s) => s.kerfWidth)
   const optimizationMode = useAppStore((s) => s.optimizationMode)
+  const offcuts = useAppStore((s) => s.offcuts)
   const result = useAppStore((s) => s.result)
   const runOptimizer = useAppStore((s) => s.runOptimizer)
 
@@ -23,5 +24,5 @@ export function useAutoOptimize() {
       runOptimizer()
     }, 300)
     return () => clearTimeout(timer)
-  }, [pieces, sheetWidth, sheetHeight, kerfWidth, optimizationMode, result, runOptimizer])
+  }, [pieces, sheetWidth, sheetHeight, kerfWidth, optimizationMode, offcuts, result, runOptimizer])
 }

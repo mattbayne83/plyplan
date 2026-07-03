@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type {
   Piece,
   PieceId,
@@ -7,9 +7,11 @@ import type {
   PackerResult,
   ExtractionResult,
   ExtractedPiece,
+  StockSheet,
 } from '../types/plyplan'
 import { generateId } from '../utils/id'
 import { guillotinePack } from '../utils/packer'
+import type { SharedState } from '../utils/share'
 import { PIECE_COLORS } from '../styles/tokens'
 
 interface AppState {
@@ -24,6 +26,9 @@ interface AppState {
   optimizationMode: OptimizationMode
   geminiApiKey: string
   sheetPricePerUnit: number
+
+  // Offcuts — leftover stock in the shop, used before new sheets
+  offcuts: StockSheet[]
 
   // Photo extraction (transient)
   uploadedPhotoUrl: string | null
@@ -45,12 +50,18 @@ interface AppState {
   removePiece: (id: PieceId) => void
   clearPieces: () => void
   importExtractedPieces: (pieces: ExtractedPiece[]) => void
+  importSharedState: (shared: SharedState) => void
 
   // Photo actions
   setUploadedPhoto: (url: string | null) => void
   setExtractionStatus: (status: AppState['extractionStatus']) => void
   setExtractionResult: (result: ExtractionResult | null) => void
   setExtractionError: (error: string | null) => void
+
+  // Offcut actions
+  addOffcut: () => void
+  updateOffcut: (id: string, updates: Partial<Omit<StockSheet, 'id'>>) => void
+  removeOffcut: (id: string) => void
 
   // Settings actions
   setSheetWidth: (w: number) => void
@@ -68,13 +79,12 @@ interface AppState {
   clearResults: () => void
 }
 
-// Migrate localStorage from old key to new key (one-time)
+// Plyplan is a single-session app: state lives in sessionStorage so an
+// accidental refresh mid-job doesn't lose the cut list, but a fresh visit
+// starts blank. Clean up data older builds left in localStorage.
 if (typeof window !== 'undefined') {
-  const oldData = localStorage.getItem('cut-sheet-storage')
-  if (oldData && !localStorage.getItem('plyplan-storage')) {
-    localStorage.setItem('plyplan-storage', oldData)
-    localStorage.removeItem('cut-sheet-storage')
-  }
+  localStorage.removeItem('cut-sheet-storage')
+  localStorage.removeItem('plyplan-storage')
 }
 
 export const useAppStore = create<AppState>()(
@@ -89,6 +99,7 @@ export const useAppStore = create<AppState>()(
       optimizationMode: 'minimize-waste' as OptimizationMode,
       geminiApiKey: '',
       sheetPricePerUnit: 55,
+      offcuts: [],
       uploadedPhotoUrl: null,
       extractionStatus: 'idle' as const,
       extractionResult: null,
@@ -154,6 +165,47 @@ export const useAppStore = create<AppState>()(
           }
         }),
 
+      // Replace the whole plan with one decoded from a share link. The
+      // recipient's API key is untouched — links never carry credentials.
+      importSharedState: (shared) =>
+        set(() => ({
+          pieces: shared.pieces.map((p, i) => ({
+            id: generateId(),
+            label: p.label,
+            width: p.width,
+            height: p.height,
+            quantity: p.quantity,
+            color: PIECE_COLORS[i % PIECE_COLORS.length],
+          })),
+          colorIndex: shared.pieces.length,
+          offcuts: shared.offcuts.map((o) => ({ id: generateId(), ...o })),
+          sheetWidth: shared.sheetWidth,
+          sheetHeight: shared.sheetHeight,
+          kerfWidth: shared.kerfWidth,
+          optimizationMode: shared.optimizationMode,
+          sheetPricePerUnit: shared.sheetPricePerUnit,
+          result: null,
+          activeSheetIndex: 0,
+        })),
+
+      addOffcut: () =>
+        set((s) => ({
+          offcuts: [...s.offcuts, { id: generateId(), width: 0, height: 0 }],
+          result: null,
+        })),
+
+      updateOffcut: (id, updates) =>
+        set((s) => ({
+          offcuts: s.offcuts.map((o) => (o.id === id ? { ...o, ...updates } : o)),
+          result: null,
+        })),
+
+      removeOffcut: (id) =>
+        set((s) => ({
+          offcuts: s.offcuts.filter((o) => o.id !== id),
+          result: null,
+        })),
+
       setUploadedPhoto: (url) => set({ uploadedPhotoUrl: url }),
       setExtractionStatus: (status) => set({ extractionStatus: status }),
       setExtractionResult: (result) => set({ extractionResult: result }),
@@ -169,10 +221,17 @@ export const useAppStore = create<AppState>()(
       setSawViewOpen: (open) => set({ sawViewOpen: open }),
 
       runOptimizer: () => {
-        const { pieces, sheetWidth, sheetHeight, kerfWidth, optimizationMode } = get()
+        const { pieces, sheetWidth, sheetHeight, kerfWidth, optimizationMode, offcuts } = get()
         const validPieces = pieces.filter((p) => p.width > 0 && p.height > 0 && p.quantity > 0)
         if (validPieces.length === 0) return
-        const result = guillotinePack(validPieces, { sheetWidth, sheetHeight, kerfWidth, mode: optimizationMode })
+        const validOffcuts = offcuts.filter((o) => o.width > 0 && o.height > 0)
+        const result = guillotinePack(validPieces, {
+          sheetWidth,
+          sheetHeight,
+          kerfWidth,
+          mode: optimizationMode,
+          offcuts: validOffcuts,
+        })
         set({ result, activeSheetIndex: 0 })
       },
 
@@ -181,12 +240,14 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'plyplan-storage',
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         pieces: state.pieces,
         colorIndex: state.colorIndex,
         sheetWidth: state.sheetWidth,
         sheetHeight: state.sheetHeight,
         kerfWidth: state.kerfWidth,
+        offcuts: state.offcuts,
         optimizationMode: state.optimizationMode,
         geminiApiKey: state.geminiApiKey,
         sheetPricePerUnit: state.sheetPricePerUnit,
