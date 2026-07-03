@@ -21,6 +21,34 @@ const makeConfig = (over: Partial<PackerConfig> = {}): PackerConfig => ({
 
 const MODES: OptimizationMode[] = ['minimize-waste', 'minimize-saw-changes']
 
+describe('guillotinePack — hybrid minimize-waste', () => {
+  // minimize-waste runs both algorithms and keeps the winner, so it can
+  // never do worse than the pure shelf mode on the numbers that matter.
+  const CASES: Piece[][] = [
+    [makePiece({ id: 'a', width: 24, height: 24, quantity: 8 })],
+    [
+      makePiece({ id: 'a', width: 47, height: 23, quantity: 4 }),
+      makePiece({ id: 'b', width: 30, height: 20, quantity: 6 }),
+    ],
+    [
+      makePiece({ id: 'a', width: 90, height: 40, quantity: 2 }),
+      makePiece({ id: 'b', width: 12, height: 12, quantity: 20 }),
+      makePiece({ id: 'c', width: 36, height: 15, quantity: 5 }),
+    ],
+  ]
+
+  it.each(CASES.map((pieces, i) => [i, pieces] as const))(
+    'is never worse than shelf packing (case %i)',
+    (_i, pieces) => {
+      const offcuts = [{ id: 'o1', width: 48, height: 24 }]
+      const hybrid = guillotinePack(pieces, makeConfig({ mode: 'minimize-waste', offcuts }))
+      const shelf = guillotinePack(pieces, makeConfig({ mode: 'minimize-saw-changes', offcuts }))
+      expect(hybrid.unplacedPieces.length).toBeLessThanOrEqual(shelf.unplacedPieces.length)
+      expect(hybrid.newSheets).toBeLessThanOrEqual(shelf.newSheets)
+    }
+  )
+})
+
 describe.each(MODES)('guillotinePack (%s)', (mode) => {
   it('packs pieces onto full sheets when no offcuts exist', () => {
     const result = guillotinePack([makePiece({ quantity: 2 })], makeConfig({ mode }))
@@ -94,6 +122,30 @@ describe.each(MODES)('guillotinePack (%s)', (mode) => {
     expect(result.unplacedPieces).toHaveLength(1)
     expect(result.totalSheets).toBe(0)
     expect(result.newSheets).toBe(0)
+  })
+
+  it('never returns an out-of-bounds or overlapping placement', () => {
+    const result = guillotinePack(
+      [
+        makePiece({ id: 'a', width: 30, height: 20, quantity: 3 }),
+        makePiece({ id: 'b', width: 47, height: 23, quantity: 2 }),
+        makePiece({ id: 'c', width: 12, height: 12, quantity: 5 }),
+      ],
+      makeConfig({ mode, offcuts: [{ id: 'o1', width: 48, height: 24 }] })
+    )
+    for (const sheet of result.sheets) {
+      const ps = sheet.placements
+      for (let i = 0; i < ps.length; i++) {
+        for (let j = i + 1; j < ps.length; j++) {
+          const a = ps[i]
+          const b = ps[j]
+          const overlap =
+            a.x < b.x + b.width && b.x < a.x + a.width &&
+            a.y < b.y + b.height && b.y < a.y + a.height
+          expect(overlap).toBe(false)
+        }
+      }
+    }
   })
 
   it('unplaces a piece that only fits an offcut once that offcut is full', () => {

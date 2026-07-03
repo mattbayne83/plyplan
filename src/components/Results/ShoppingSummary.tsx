@@ -53,7 +53,11 @@ export function ShoppingSummary({ result }: ShoppingSummaryProps) {
       )}
 
       <div className="flex items-center justify-between text-[13px] text-text-muted">
-        <span>{sheetDim} · {utilization}% used</span>
+        <span>
+          {result.newSheets === 0
+            ? `Nothing to buy · ${utilization}% of offcut stock used`
+            : `${sheetDim} · ${utilization}% used`}
+        </span>
         <span>
           {editingPrice ? (
             <span className="inline-flex items-center gap-0.5">

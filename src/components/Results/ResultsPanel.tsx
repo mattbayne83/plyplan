@@ -1,18 +1,18 @@
-import { useRef } from 'react'
 import { Maximize2, ZoomIn } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { getSheetLabel } from '../../utils/labels'
 import { SheetView } from './SheetView'
 import { ExportButton } from './ExportButton'
+import { ShareButton } from './ShareButton'
 import { ShoppingSummary } from './ShoppingSummary'
 import { UnplacedPieces } from './UnplacedPieces'
+import { LeftoverReport } from './LeftoverReport'
 
 export function ResultsPanel() {
   const result = useAppStore((s) => s.result)
   const activeSheetIndex = useAppStore((s) => s.activeSheetIndex)
   const setActiveSheetIndex = useAppStore((s) => s.setActiveSheetIndex)
   const setSawViewOpen = useAppStore((s) => s.setSawViewOpen)
-  const sheetRef = useRef<HTMLDivElement>(null)
 
   if (!result) return null
 
@@ -62,13 +62,14 @@ export function ResultsPanel() {
           >
             <Maximize2 size={16} />
           </button>
-          <ExportButton targetRef={sheetRef} sheetIndex={activeSheetIndex} />
+          <ShareButton />
+          <ExportButton />
         </div>
       </div>
 
       {/* Sheet diagram — tap to open the zoomable full-screen viewer.
-          The export target (sheetRef) wraps only the diagram, so the
-          "Tap to zoom" badge never lands in exported PNGs. */}
+          Export renders its own off-screen report, so the "Tap to zoom"
+          badge never lands in exported PNGs. */}
       {activeSheet && (
         <div
           role="button"
@@ -83,7 +84,7 @@ export function ResultsPanel() {
           }}
           className="relative cursor-zoom-in group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
         >
-          <div className="p-3" ref={sheetRef}>
+          <div className="p-3">
             <SheetView sheet={activeSheet} />
           </div>
           <span className="pointer-events-none absolute top-4 right-4 flex items-center gap-1 rounded-full bg-text/70 px-2 py-1 text-[11px] font-medium text-white opacity-80 transition-opacity group-hover:opacity-100">
@@ -92,6 +93,11 @@ export function ResultsPanel() {
           </span>
         </div>
       )}
+
+      {/* Leftovers this job produces — the single-session bridge to next visit */}
+      <div className="px-3 pb-3">
+        <LeftoverReport result={result} />
+      </div>
     </div>
   )
 }

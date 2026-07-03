@@ -39,7 +39,7 @@ The current app was built desktop-first. These items flip it to phone-first — 
 Features that make the sheet count answer trustworthy and the diagram useful.
 
 ### Algorithm Quality
-- [ ] **Hybrid algorithm** — Run both guillotine and shelf, return the better result. Small compute cost, potentially 1 fewer sheet on edge cases. The sheet count must be right.
+- [x] **Hybrid algorithm** — minimize-waste mode runs both maxrects and shelf, returns the better result (fewer unplaced → fewer sheets to buy → less waste). minimize-saw-changes stays pure shelf by design. (`packer.ts`)
 - [ ] **Benchmark suite** — Standard test sets (e.g., 77 pieces on 4x8 sheets). Compare against MaxCut results. Track regression. If we say "2 sheets" and MaxCut says "1," we've lost trust permanently. *(Vitest harness now in place to build this on — see CLAUDE.md "Testing".)*
 - [ ] **Guillotine constraint enforcement** — Verify all cuts can be made with a panel saw (straight through). Non-guillotine-safe layouts look good on screen but can't be executed in a real shop.
 
@@ -63,7 +63,7 @@ Features that make the sheet count answer trustworthy and the diagram useful.
 > moved to Icebox.
 
 ### Session Output
-- [ ] **Leftover report** — After optimization, list the usable offcuts this job produces ("you'll have a 24×36 and a 12×48 left"). User can jot them down or re-enter them as Offcuts On Hand next visit. Pairs with export.
+- [x] **Leftover report** — "Leftovers worth keeping" lists the usable offcuts this job produces (disjoint rects, ≥4" side & ≥1 sq ft), with a nudge to re-enter them as Offcuts On Hand next visit. Included in the exported plan. (`leftovers.ts`, `LeftoverReport.tsx`)
 - [ ] **Undo/redo** — History stack for piece edits and settings. Familiar pattern. (Within-session only.)
 
 ### Materials
@@ -71,10 +71,11 @@ Features that make the sheet count answer trustworthy and the diagram useful.
 - [ ] **Multi-material projects** — Mix 3/4" ply + 1/4" MDF + hardwood backer in one project. Optimizer groups by material.
 
 ### Sharing
-- [ ] **Shareable project link** — Encode pieces + settings + offcuts in the URL. Text your spouse "we need 2 sheets," or bookmark it — the URL *is* the save file, so this doubles as opt-in persistence without storing anything.
+- [x] **Shareable project link** — Pieces + settings + offcuts encode into `#s=` in the URL (never the API key). Native share sheet on phones, clipboard elsewhere; opening the link imports the plan. The URL is the save file — opt-in persistence without storing anything. (`share.ts`, `ShareButton.tsx`, `useShareImport.ts`)
 
 ### Export
-- [ ] **PDF export** — Multi-page: page 1 = shopping list + summary, page 2+ = cut diagrams. Print-ready for the shop wall.
+- [x] **Full-plan export** — One tap downloads the whole plan as a single tall PNG: shopping summary, every sheet diagram, unplaced warnings, leftover report. Print-ready for the shop wall. (`ExportButton.tsx`) *(PDF variant still open below)*
+- [ ] **PDF export** — Same report as a paginated PDF (would need a pdf lib; PNG covers most printing needs today).
 - [ ] **Import/export formats** — CSV, JSON. Interop with OpenCutList and other tools.
 
 ### Manual Adjustment

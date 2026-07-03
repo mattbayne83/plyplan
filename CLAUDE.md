@@ -21,8 +21,9 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 - State-driven: Zustand store with `persist` into **sessionStorage** (pieces, settings, offcuts, API key, sheet price only). Single-session app by design: a refresh mid-job is safe, a fresh visit starts blank — nothing outlives the tab
 - Offcuts: user-entered leftover stock (`offcuts` in store, edited in Settings). Packer seeds them as bins and only opens new full sheets when nothing fits; `PackerResult.newSheets` is the buy count shown in `ShoppingSummary`
 - Algorithm: Two modes in `packer.ts`, dispatched by `OptimizationMode`:
-  - **minimize-waste** — Best-area-fit guillotine (rotates freely, packs tightest)
-  - **minimize-saw-changes** — Shelf packing (groups same-height pieces into horizontal strips, avoids rotation, fewer unique fence settings)
+  - **minimize-waste** — Hybrid: runs BOTH best-area-fit maxrects and shelf packing, returns the better result (fewer unplaced → fewer newSheets → fewer bins → less waste)
+  - **minimize-saw-changes** — Shelf packing only (a deliberate trade of material for simpler cuts; never overridden)
+- Share links: plan state (pieces, settings, offcuts — never the API key) encodes into `#s=<base64url JSON>`; `useShareImport` decodes it on load and strips the hash. The URL is the save file — the single-session answer to persistence
 - Visualization: SVG with responsive viewBox
 - Mobile zoom: app shell is locked against page pinch-zoom (`usePreventPageZoom` → `pageZoomGuards`); the only zoomable element is the full-screen `SawView` diagram, which owns its own pinch/pan/double-tap gestures via `useZoomPan` (`touch-action: none`). Math lives in pure, unit-tested `utils/zoomMath.ts`.
 - Design tokens: CSS variables in `index.css` `@theme` block + JS mirror in `src/styles/tokens.ts`
@@ -42,11 +43,14 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 - `src/store/useAppStore.ts` — Main Zustand store (persisted)
 - `src/styles/tokens.ts` — JS-accessible design tokens + `PIECE_COLORS` array
 - `src/hooks/useAutoOptimize.ts` — Debounced auto-optimize hook (consumed in App.tsx)
+- `src/hooks/useShareImport.ts` — Imports a plan from a `#s=` share link on load, strips the hash
 - `src/hooks/useZoomPan.ts` — Pinch/pan/double-tap/wheel gesture state for the SawView diagram
 - `src/hooks/usePreventPageZoom.ts` — Installs the page-zoom guards for the app shell's lifetime
 
 ### Algorithm & Utils
-- `src/utils/packer.ts` — Bin packing algorithms (guillotine + shelf)
+- `src/utils/packer.ts` — Bin packing algorithms (maxrects + shelf, hybrid dispatch)
+- `src/utils/leftovers.ts` — Post-hoc usable-leftover rects per sheet (disjoint, kerf-aware, ≥4" side & ≥1 sq ft)
+- `src/utils/share.ts` — Share-link codec (versioned base64url JSON, validated on decode, no API key)
 - `src/utils/units.ts` — Fraction parsing ("3-1/2" → 3.5) and display formatting
 - `src/utils/validation.ts` — Per-piece validation (zero dims, exceeds sheet, bad qty)
 - `src/utils/zoomMath.ts` — Pure zoom/pan geometry (clamp, focal-stable zoom, swipe-close); unit-tested
@@ -68,7 +72,9 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 - `src/components/Results/ResultsPanel.tsx` — Results container: Shopping → Unplaced → Sheet tabs → Diagram (tap diagram to open SawView)
 - `src/components/Results/SheetView.tsx` — SVG cut sheet visualization
 - `src/components/Results/SawView.tsx` — Full-screen zoomable diagram viewer (pinch/double-tap/drag via `useZoomPan`)
-- `src/components/Results/ExportButton.tsx` — PNG export button
+- `src/components/Results/LeftoverReport.tsx` — "Leftovers worth keeping" — usable offcuts this job produces
+- `src/components/Results/ShareButton.tsx` — Share-link button (native share sheet on phones, clipboard fallback)
+- `src/components/Results/ExportButton.tsx` — One-tap full-plan PNG export (off-screen report: summary + all sheets + leftovers)
 
 ### Layout
 - `src/components/Header.tsx` — App header with settings toggle
@@ -76,7 +82,7 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 
 ### Testing
 - `src/test/setup.ts` — jest-dom matchers + an in-memory `localStorage` polyfill for store-backed tests
-- `*.test.ts(x)` colocated with source — `zoomMath`, `pageZoomGuards`, `resetPinchZoom`, `units`, `packer` (unit); `SawView`, `ResultsPanel`, `SettingsPanel`, `DimensionInput` (RTL)
+- `*.test.ts(x)` colocated with source — `zoomMath`, `pageZoomGuards`, `resetPinchZoom`, `units`, `packer`, `leftovers`, `share` (unit); `SawView`, `ResultsPanel`, `SettingsPanel`, `DimensionInput` (RTL)
 
 ## Docs
 - `docs/VISION.md` — Product vision, north star, "Two Moments" framework, competitive position
@@ -95,12 +101,14 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 - **Only persist user data** — Never persist results, photo data, or extraction state
 - **Object URLs must be revoked** — `URL.revokeObjectURL()` on photo clear to prevent leaks
 - **SVG export needs HTML wrapper** — `html-to-image` `toPng` targets the div containing the SVG, not the SVG directly
+- **Export renders off-screen** — `ExportButton` mounts the full report at `left: -10000px` only while exporting (needs two rAFs before `toPng`; `display: none` won't rasterize)
+- **Share links carry no secrets** — `encodeShareState` must never include `geminiApiKey`; decode validates every field and returns null on anything suspect (links are untrusted input)
 - **PIECE_COLORS in tokens.ts** — Store imports from `styles/tokens.ts`, not inline. Keep them in sync.
 - **Auto-optimize invalidation** — Changing pieces/settings sets `result` to null → hook detects and re-runs. Don't call `runOptimizer` directly from UI.
 - **SawView is a full-screen overlay** — z-50, fixed, renders outside main layout. Toggled via `sawViewOpen` store flag. It's the *only* element allowed to pinch-zoom (its surface sets `touch-action: none`); the rest of the shell is locked.
 - **Page zoom is globally blocked on touch** — `body` is `touch-action: pan-x pan-y` and `pageZoomGuards` preventDefaults iOS gestures. Any future "zoom this in place" UI must opt out with `touch-action: none` and handle its own gesture, or it won't zoom.
 - **iOS focus-zoom needs 16px inputs** — Inputs/textareas/selects are forced to 16px on `max-width: 767px` (index.css); dropping below re-introduces the un-recoverable focus-zoom the guards can't catch.
-- **"Tap to zoom" badge lives outside `sheetRef`** — The export target (`sheetRef`) wraps only `SheetView`; the badge is a sibling so it never appears in exported PNGs.
+- **Leftover rects must stay disjoint** — `computeLeftovers` clips each kept candidate against the rest; overlapping leftovers would double-count material in the report.
 - **`useZoomPan` wheel listener is a callback ref** — React's synthetic `onWheel` is passive and can't `preventDefault`; the hook attaches a native non-passive listener via a callback ref instead.
 - **Tests need a `localStorage` polyfill** — The persisted store touches `localStorage` at import; `src/test/setup.ts` provides an in-memory shim so jsdom component tests don't crash on import.
 - **`capture="environment"` is inconsistent** — Gracefully falls back to file picker on unsupported browsers

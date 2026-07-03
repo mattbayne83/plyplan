@@ -29,15 +29,32 @@ interface PlacementCandidate {
 }
 
 /**
- * Main entry point — dispatches to the appropriate algorithm based on mode.
+ * Main entry point — dispatches by mode.
+ *
+ * minimize-saw-changes is a deliberate trade (simpler cuts over material),
+ * so it always uses shelf packing. minimize-waste is hybrid: both algorithms
+ * run and the better result wins — shelf occasionally beats maxrects on
+ * uniform pieces, and the sheet count must be right.
  */
 export function guillotinePack(pieces: Piece[], config: PackerConfig): PackerResult {
-  const items = expandPieces(pieces)
-
   if (config.mode === 'minimize-saw-changes') {
-    return shelfPack(items, config)
+    return shelfPack(expandPieces(pieces), config)
   }
-  return bestAreaPack(items, config)
+  // expandPieces is called per-algorithm: bestAreaPack sorts its items array
+  // in place, so the two runs must not share it.
+  const area = bestAreaPack(expandPieces(pieces), config)
+  const shelf = shelfPack(expandPieces(pieces), config)
+  return betterResult(area, shelf)
+}
+
+/** Fewer unplaced pieces → fewer sheets to buy → fewer bins → less waste. */
+function betterResult(a: PackerResult, b: PackerResult): PackerResult {
+  if (a.unplacedPieces.length !== b.unplacedPieces.length) {
+    return a.unplacedPieces.length < b.unplacedPieces.length ? a : b
+  }
+  if (a.newSheets !== b.newSheets) return a.newSheets < b.newSheets ? a : b
+  if (a.totalSheets !== b.totalSheets) return a.totalSheets < b.totalSheets ? a : b
+  return a.totalWastePercent <= b.totalWastePercent ? a : b
 }
 
 function expandPieces(pieces: Piece[]): ExpandedItem[] {

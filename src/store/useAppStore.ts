@@ -11,6 +11,7 @@ import type {
 } from '../types/plyplan'
 import { generateId } from '../utils/id'
 import { guillotinePack } from '../utils/packer'
+import type { SharedState } from '../utils/share'
 import { PIECE_COLORS } from '../styles/tokens'
 
 interface AppState {
@@ -49,6 +50,7 @@ interface AppState {
   removePiece: (id: PieceId) => void
   clearPieces: () => void
   importExtractedPieces: (pieces: ExtractedPiece[]) => void
+  importSharedState: (shared: SharedState) => void
 
   // Photo actions
   setUploadedPhoto: (url: string | null) => void
@@ -162,6 +164,29 @@ export const useAppStore = create<AppState>()(
             result: null,
           }
         }),
+
+      // Replace the whole plan with one decoded from a share link. The
+      // recipient's API key is untouched — links never carry credentials.
+      importSharedState: (shared) =>
+        set(() => ({
+          pieces: shared.pieces.map((p, i) => ({
+            id: generateId(),
+            label: p.label,
+            width: p.width,
+            height: p.height,
+            quantity: p.quantity,
+            color: PIECE_COLORS[i % PIECE_COLORS.length],
+          })),
+          colorIndex: shared.pieces.length,
+          offcuts: shared.offcuts.map((o) => ({ id: generateId(), ...o })),
+          sheetWidth: shared.sheetWidth,
+          sheetHeight: shared.sheetHeight,
+          kerfWidth: shared.kerfWidth,
+          optimizationMode: shared.optimizationMode,
+          sheetPricePerUnit: shared.sheetPricePerUnit,
+          result: null,
+          activeSheetIndex: 0,
+        })),
 
       addOffcut: () =>
         set((s) => ({
