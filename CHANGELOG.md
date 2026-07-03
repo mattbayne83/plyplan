@@ -24,6 +24,10 @@ yet formally versioned.
   the diagram zooms; 16px inputs prevent iOS focus-zoom.
 
 ### Changed
+- **Single-session storage** — App state (pieces, settings, offcuts, API key)
+  now persists to `sessionStorage` instead of `localStorage`: an accidental
+  refresh mid-job keeps your cut list, but every fresh visit starts blank.
+  Legacy `localStorage` data from earlier builds is cleared on load.
 - `SawView` no longer relies on `touch-action: manipulation` + a "rotate your
   phone" hint; it owns its gestures via `useZoomPan` (`touch-action: none`).
 

@@ -18,7 +18,7 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 - Phone-first single-page vertical flow: Settings → Empty State / Photo + Pieces → Results
 - No router — stacked sections, conditional rendering
 - Auto-optimize: `useAutoOptimize` hook watches pieces + settings, debounces 300ms, re-runs packer when `result` is null. No manual "Optimize" button.
-- State-driven: Zustand store with `persist` (pieces, settings, offcuts, API key, sheet price only)
+- State-driven: Zustand store with `persist` into **sessionStorage** (pieces, settings, offcuts, API key, sheet price only). Single-session app by design: a refresh mid-job is safe, a fresh visit starts blank — nothing outlives the tab
 - Offcuts: user-entered leftover stock (`offcuts` in store, edited in Settings). Packer seeds them as bins and only opens new full sheets when nothing fits; `PackerResult.newSheets` is the buy count shown in `ShoppingSummary`
 - Algorithm: Two modes in `packer.ts`, dispatched by `OptimizationMode`:
   - **minimize-waste** — Best-area-fit guillotine (rotates freely, packs tightest)
@@ -91,6 +91,7 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 - **Packer is pure** — `guillotinePack(pieces, config)` returns data, no store access. `config.mode` selects algorithm
 - **Shelf packer normalizes orientation** — pieces are oriented so height <= width, reducing unique shelf heights
 - **Fraction parsing handles multiple formats** — "3-1/2", "3 1/2", "3.5", "1/4"
+- **Single-session by design** — The store persists to `sessionStorage`, never `localStorage`; the app must start blank on a new visit. Features that assume cross-visit memory (saved projects, offcut libraries) are out of scope unless the direction changes. The store module also clears legacy `localStorage` keys on load
 - **Only persist user data** — Never persist results, photo data, or extraction state
 - **Object URLs must be revoked** — `URL.revokeObjectURL()` on photo clear to prevent leaks
 - **SVG export needs HTML wrapper** — `html-to-image` `toPng` targets the div containing the SVG, not the SVG directly

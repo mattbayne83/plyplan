@@ -1,11 +1,12 @@
 import '@testing-library/jest-dom'
 
-// jsdom doesn't always expose a working localStorage; the Zustand persist
-// store and its migration shim touch it at import time. Provide a minimal
-// in-memory implementation so store-backed components can be tested.
-if (typeof localStorage === 'undefined' || typeof localStorage.getItem !== 'function') {
+// jsdom doesn't always expose working Web Storage; the Zustand persist store
+// (sessionStorage) and the legacy-localStorage cleanup touch both at import
+// time. Provide minimal in-memory implementations so store-backed components
+// can be tested.
+const makeStorageMock = (): Storage => {
   const store = new Map<string, string>()
-  const mock: Storage = {
+  return {
     getItem: (k) => (store.has(k) ? store.get(k)! : null),
     setItem: (k, v) => void store.set(k, String(v)),
     removeItem: (k) => void store.delete(k),
@@ -15,5 +16,11 @@ if (typeof localStorage === 'undefined' || typeof localStorage.getItem !== 'func
       return store.size
     },
   }
-  Object.defineProperty(globalThis, 'localStorage', { value: mock, configurable: true })
+}
+
+for (const name of ['localStorage', 'sessionStorage'] as const) {
+  const existing = (globalThis as Record<string, unknown>)[name] as Storage | undefined
+  if (!existing || typeof existing.getItem !== 'function') {
+    Object.defineProperty(globalThis, name, { value: makeStorageMock(), configurable: true })
+  }
 }

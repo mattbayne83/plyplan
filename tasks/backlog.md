@@ -55,25 +55,23 @@ Features that make the sheet count answer trustworthy and the diagram useful.
 
 ---
 
-## P2 — Keep Coming Back (v2.x)
+## P2 — Make the Session Count (v2.x)
 
-Evolve from single-use to a tool you reach for every project.
+> **Direction (2026-07):** Plyplan is a single-session app — no cross-visit
+> memory or persistence (store is sessionStorage-only). The plan leaves the
+> app via export/share, not via saved state. Items assuming stored projects
+> moved to Icebox.
 
-### Projects
-- [ ] **Project library** — Save, name, duplicate. "That bookshelf from February." List view with piece count, sheet count, date.
-- [ ] **Undo/redo** — History stack for piece edits and settings. Familiar pattern.
-
-### Offcuts
-- [ ] **Offcut inventory** — After optimization, catalog leftover pieces with dimensions. "Keep" toggle.
-- [ ] **Cross-project offcut reuse** — Starting a new project? "You have a 24x36 offcut from the bookshelf build."
+### Session Output
+- [ ] **Leftover report** — After optimization, list the usable offcuts this job produces ("you'll have a 24×36 and a 12×48 left"). User can jot them down or re-enter them as Offcuts On Hand next visit. Pairs with export.
+- [ ] **Undo/redo** — History stack for piece edits and settings. Familiar pattern. (Within-session only.)
 
 ### Materials
 - [ ] **Material library** — Saved sheet goods: name, size, thickness, price, grain. Pre-populated with common US sizes.
 - [ ] **Multi-material projects** — Mix 3/4" ply + 1/4" MDF + hardwood backer in one project. Optimizer groups by material.
 
 ### Sharing
-- [ ] **Shareable project link** — Text your spouse: "we need 2 sheets, here's the plan." Read-only URL, no account needed.
-- [ ] **Cloud sync** — Optional. Work on laptop, reference on phone at the saw.
+- [ ] **Shareable project link** — Encode pieces + settings + offcuts in the URL. Text your spouse "we need 2 sheets," or bookmark it — the URL *is* the save file, so this doubles as opt-in persistence without storing anything.
 
 ### Export
 - [ ] **PDF export** — Multi-page: page 1 = shopping list + summary, page 2+ = cut diagrams. Print-ready for the shop wall.
@@ -100,6 +98,9 @@ AI becomes a workflow partner, not just an input method.
 
 ## Icebox (Good Ideas, No Timeline)
 
+- [ ] **Project library** — Save, name, duplicate projects. *(Iceboxed: conflicts with single-session direction.)*
+- [ ] **Cross-project offcut reuse** — "You have a 24x36 offcut from the bookshelf build." *(Iceboxed: needs cross-visit memory.)*
+- [ ] **Cloud sync** — Work on laptop, reference on phone. *(Iceboxed: single-session direction; shareable link covers the hand-off.)*
 - [ ] **Dark mode** — Respect `prefers-color-scheme`, manual toggle.
 - [ ] **Metric-first locale** — Auto-detect locale, default to mm for non-US users.
 - [ ] **PWA / offline mode** — Service worker for offline use in shops with poor connectivity. High-value for the phone-at-the-saw use case.

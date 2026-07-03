@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type {
   Piece,
   PieceId,
@@ -77,13 +77,12 @@ interface AppState {
   clearResults: () => void
 }
 
-// Migrate localStorage from old key to new key (one-time)
+// Plyplan is a single-session app: state lives in sessionStorage so an
+// accidental refresh mid-job doesn't lose the cut list, but a fresh visit
+// starts blank. Clean up data older builds left in localStorage.
 if (typeof window !== 'undefined') {
-  const oldData = localStorage.getItem('cut-sheet-storage')
-  if (oldData && !localStorage.getItem('plyplan-storage')) {
-    localStorage.setItem('plyplan-storage', oldData)
-    localStorage.removeItem('cut-sheet-storage')
-  }
+  localStorage.removeItem('cut-sheet-storage')
+  localStorage.removeItem('plyplan-storage')
 }
 
 export const useAppStore = create<AppState>()(
@@ -216,6 +215,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'plyplan-storage',
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         pieces: state.pieces,
         colorIndex: state.colorIndex,
