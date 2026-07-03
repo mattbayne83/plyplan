@@ -16,7 +16,9 @@ export function ShoppingSummary({ result }: ShoppingSummaryProps) {
   const [editingPrice, setEditingPrice] = useState(false)
   const [priceInput, setPriceInput] = useState(String(sheetPrice))
 
-  const total = result.totalSheets * sheetPrice
+  // Offcuts are already in the shop — only new full sheets go on the shopping list
+  const offcutsUsed = result.totalSheets - result.newSheets
+  const total = result.newSheets * sheetPrice
   const utilization = (100 - result.totalWastePercent).toFixed(0)
 
   const commitPrice = () => {
@@ -35,12 +37,20 @@ export function ShoppingSummary({ result }: ShoppingSummaryProps) {
     <div className="px-3 py-3">
       <div className="flex items-baseline justify-between mb-1">
         <span className="text-[32px] font-bold text-text leading-none">
-          {result.totalSheets} sheet{result.totalSheets !== 1 ? 's' : ''}
+          {result.newSheets} sheet{result.newSheets !== 1 ? 's' : ''}
         </span>
         <span className="text-[22px] font-bold text-text leading-none">
           ${total.toFixed(0)}
         </span>
       </div>
+
+      {offcutsUsed > 0 && (
+        <p className="text-[13px] text-primary font-medium mb-1">
+          {result.newSheets === 0
+            ? `Cut entirely from ${offcutsUsed} offcut${offcutsUsed !== 1 ? 's' : ''} you already have`
+            : `+ ${offcutsUsed} offcut${offcutsUsed !== 1 ? 's' : ''} you already have`}
+        </p>
+      )}
 
       <div className="flex items-center justify-between text-[13px] text-text-muted">
         <span>{sheetDim} · {utilization}% used</span>

@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { Maximize2, ZoomIn } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
+import { getSheetLabel } from '../../utils/labels'
 import { SheetView } from './SheetView'
 import { ExportButton } from './ExportButton'
 import { ShoppingSummary } from './ShoppingSummary'
@@ -44,7 +45,7 @@ export function ResultsPanel() {
                   : 'text-text-muted hover:text-text-secondary hover:bg-surface-raised'
               }`}
             >
-              Sheet {i + 1}
+              {getSheetLabel(result.sheets, i)}
               {result.sheets.length > 1 && (
                 <span className="ml-1 text-text-muted">
                   ({sheet.placements.length})

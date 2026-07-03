@@ -1,6 +1,6 @@
 import { useAppStore } from '../../store/useAppStore'
-import { parseDimension, formatDimension } from '../../utils/units'
-import { X } from 'lucide-react'
+import { DimensionInput } from '../common/DimensionInput'
+import { X, Plus } from 'lucide-react'
 import type { OptimizationMode } from '../../types/plyplan'
 
 const SHEET_PRESETS = [
@@ -32,6 +32,10 @@ export function SettingsPanel() {
   const setSheetWidth = useAppStore((s) => s.setSheetWidth)
   const setSheetHeight = useAppStore((s) => s.setSheetHeight)
   const setKerfWidth = useAppStore((s) => s.setKerfWidth)
+  const offcuts = useAppStore((s) => s.offcuts)
+  const addOffcut = useAppStore((s) => s.addOffcut)
+  const updateOffcut = useAppStore((s) => s.updateOffcut)
+  const removeOffcut = useAppStore((s) => s.removeOffcut)
 
   if (!settingsOpen) return null
 
@@ -78,26 +82,63 @@ export function SettingsPanel() {
             ))}
           </div>
           <div className="flex items-center gap-2 text-[13px] text-text-muted">
-            <input
-              type="text"
-              value={formatDimension(sheetWidth)}
-              onChange={(e) => {
-                const v = parseDimension(e.target.value.replace(/["']/g, ''))
-                if (v !== null) setSheetWidth(v)
-              }}
+            <DimensionInput
+              value={sheetWidth}
+              onCommit={setSheetWidth}
+              placeholder="W"
               className="w-20 border border-border rounded-[var(--radius-input)] px-3 py-2.5 text-center text-text bg-surface-raised text-[15px] outline-none focus:ring-1 focus:ring-primary/30"
             />
             <span>×</span>
-            <input
-              type="text"
-              value={formatDimension(sheetHeight)}
-              onChange={(e) => {
-                const v = parseDimension(e.target.value.replace(/["']/g, ''))
-                if (v !== null) setSheetHeight(v)
-              }}
+            <DimensionInput
+              value={sheetHeight}
+              onCommit={setSheetHeight}
+              placeholder="H"
               className="w-20 border border-border rounded-[var(--radius-input)] px-3 py-2.5 text-center text-text bg-surface-raised text-[15px] outline-none focus:ring-1 focus:ring-primary/30"
             />
           </div>
+        </div>
+
+        {/* Offcuts on hand */}
+        <div>
+          <label className="block text-[13px] font-medium text-text-secondary mb-1">Offcuts On Hand</label>
+          <p className="text-[12px] text-text-muted mb-2">
+            Leftover stock in your shop — pieces get cut from these before new sheets.
+          </p>
+          {offcuts.length > 0 && (
+            <div className="space-y-2 mb-2">
+              {offcuts.map((offcut, i) => (
+                <div key={offcut.id} className="flex items-center gap-2 text-[13px] text-text-muted">
+                  <DimensionInput
+                    value={offcut.width}
+                    onCommit={(v) => updateOffcut(offcut.id, { width: v })}
+                    placeholder="W"
+                    className="w-20 border border-border rounded-[var(--radius-input)] px-3 py-2.5 text-center text-text bg-surface-raised text-[15px] outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                  <span>×</span>
+                  <DimensionInput
+                    value={offcut.height}
+                    onCommit={(v) => updateOffcut(offcut.id, { height: v })}
+                    placeholder="H"
+                    className="w-20 border border-border rounded-[var(--radius-input)] px-3 py-2.5 text-center text-text bg-surface-raised text-[15px] outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                  <button
+                    onClick={() => removeOffcut(offcut.id)}
+                    aria-label={`Remove offcut ${i + 1}`}
+                    className="p-2.5 rounded-[var(--radius-input)] text-text-muted hover:bg-error-light hover:text-error transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={addOffcut}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium rounded-[var(--radius-button)] border border-dashed border-border text-text-secondary hover:border-border-strong hover:text-text transition-colors"
+          >
+            <Plus size={14} />
+            Add offcut
+          </button>
         </div>
 
         {/* Kerf Width */}

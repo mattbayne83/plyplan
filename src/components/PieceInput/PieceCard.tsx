@@ -1,9 +1,8 @@
 import { X, Plus, Minus } from 'lucide-react'
-import { useState } from 'react'
 import type { Piece } from '../../types/plyplan'
 import type { ValidationError } from '../../utils/validation'
 import { useAppStore } from '../../store/useAppStore'
-import { parseDimension, formatDimension } from '../../utils/units'
+import { DimensionInput } from '../common/DimensionInput'
 import { getPieceLabel } from '../../utils/labels'
 
 interface PieceCardProps {
@@ -17,30 +16,6 @@ export function PieceCard({ piece, index, errors = [], onEnterOnLastRow }: Piece
   const updatePiece = useAppStore((s) => s.updatePiece)
   const removePiece = useAppStore((s) => s.removePiece)
   const pieces = useAppStore((s) => s.pieces)
-
-  const [widthInput, setWidthInput] = useState(
-    piece.width > 0 ? formatDimension(piece.width) : ''
-  )
-  const [heightInput, setHeightInput] = useState(
-    piece.height > 0 ? formatDimension(piece.height) : ''
-  )
-
-  const commitDimension = (field: 'width' | 'height', value: string) => {
-    const parsed = parseDimension(value.replace(/["']/g, ''))
-    if (parsed !== null) {
-      const rounded = Math.round(parsed * 1000) / 1000
-      updatePiece(piece.id, { [field]: rounded })
-    }
-  }
-
-  const handleDimensionChange = (value: string, setter: (v: string) => void) => {
-    // For plain decimal input, cap at 3 decimal places
-    if (value.includes('.') && !value.includes('/')) {
-      const [, decimal] = value.split('.')
-      if (decimal && decimal.length > 3) return
-    }
-    setter(value)
-  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -76,31 +51,19 @@ export function PieceCard({ piece, index, errors = [], onEnterOnLastRow }: Piece
 
         {/* W x H */}
         <div className="flex items-center gap-1 min-w-0">
-          <input
-            type="text"
-            value={widthInput}
-            onChange={(e) => handleDimensionChange(e.target.value, setWidthInput)}
-            onBlur={() => commitDimension('width', widthInput)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitDimension('width', widthInput)
-              handleKeyDown(e)
-            }}
+          <DimensionInput
+            value={piece.width}
+            onCommit={(v) => updatePiece(piece.id, { width: v })}
+            onKeyDown={handleKeyDown}
             placeholder="W"
-            inputMode="decimal"
             className="w-16 bg-surface-raised text-[15px] font-medium text-text text-center outline-none placeholder:text-text-muted focus:ring-1 focus:ring-primary/30 rounded-[var(--radius-input)] px-1 py-1.5 border border-border"
           />
           <span className="text-text-muted text-[13px] flex-shrink-0 font-medium">×</span>
-          <input
-            type="text"
-            value={heightInput}
-            onChange={(e) => handleDimensionChange(e.target.value, setHeightInput)}
-            onBlur={() => commitDimension('height', heightInput)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitDimension('height', heightInput)
-              handleKeyDown(e)
-            }}
+          <DimensionInput
+            value={piece.height}
+            onCommit={(v) => updatePiece(piece.id, { height: v })}
+            onKeyDown={handleKeyDown}
             placeholder="H"
-            inputMode="decimal"
             className="w-16 bg-surface-raised text-[15px] font-medium text-text text-center outline-none placeholder:text-text-muted focus:ring-1 focus:ring-primary/30 rounded-[var(--radius-input)] px-1 py-1.5 border border-border"
           />
         </div>

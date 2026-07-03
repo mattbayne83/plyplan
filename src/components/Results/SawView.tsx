@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { X, ZoomOut } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
+import { getSheetLabel } from '../../utils/labels'
 import { SheetView } from './SheetView'
 import { useZoomPan } from '../../hooks/useZoomPan'
 
@@ -39,7 +40,7 @@ export function SawView() {
                   : 'text-white/50 hover:text-white/80'
               }`}
             >
-              Sheet {i + 1}
+              {getSheetLabel(result.sheets, i)}
             </button>
           ))}
         </div>

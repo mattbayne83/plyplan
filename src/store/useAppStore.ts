@@ -7,6 +7,7 @@ import type {
   PackerResult,
   ExtractionResult,
   ExtractedPiece,
+  StockSheet,
 } from '../types/plyplan'
 import { generateId } from '../utils/id'
 import { guillotinePack } from '../utils/packer'
@@ -24,6 +25,9 @@ interface AppState {
   optimizationMode: OptimizationMode
   geminiApiKey: string
   sheetPricePerUnit: number
+
+  // Offcuts — leftover stock in the shop, used before new sheets
+  offcuts: StockSheet[]
 
   // Photo extraction (transient)
   uploadedPhotoUrl: string | null
@@ -51,6 +55,11 @@ interface AppState {
   setExtractionStatus: (status: AppState['extractionStatus']) => void
   setExtractionResult: (result: ExtractionResult | null) => void
   setExtractionError: (error: string | null) => void
+
+  // Offcut actions
+  addOffcut: () => void
+  updateOffcut: (id: string, updates: Partial<Omit<StockSheet, 'id'>>) => void
+  removeOffcut: (id: string) => void
 
   // Settings actions
   setSheetWidth: (w: number) => void
@@ -89,6 +98,7 @@ export const useAppStore = create<AppState>()(
       optimizationMode: 'minimize-waste' as OptimizationMode,
       geminiApiKey: '',
       sheetPricePerUnit: 55,
+      offcuts: [],
       uploadedPhotoUrl: null,
       extractionStatus: 'idle' as const,
       extractionResult: null,
@@ -154,6 +164,24 @@ export const useAppStore = create<AppState>()(
           }
         }),
 
+      addOffcut: () =>
+        set((s) => ({
+          offcuts: [...s.offcuts, { id: generateId(), width: 0, height: 0 }],
+          result: null,
+        })),
+
+      updateOffcut: (id, updates) =>
+        set((s) => ({
+          offcuts: s.offcuts.map((o) => (o.id === id ? { ...o, ...updates } : o)),
+          result: null,
+        })),
+
+      removeOffcut: (id) =>
+        set((s) => ({
+          offcuts: s.offcuts.filter((o) => o.id !== id),
+          result: null,
+        })),
+
       setUploadedPhoto: (url) => set({ uploadedPhotoUrl: url }),
       setExtractionStatus: (status) => set({ extractionStatus: status }),
       setExtractionResult: (result) => set({ extractionResult: result }),
@@ -169,10 +197,17 @@ export const useAppStore = create<AppState>()(
       setSawViewOpen: (open) => set({ sawViewOpen: open }),
 
       runOptimizer: () => {
-        const { pieces, sheetWidth, sheetHeight, kerfWidth, optimizationMode } = get()
+        const { pieces, sheetWidth, sheetHeight, kerfWidth, optimizationMode, offcuts } = get()
         const validPieces = pieces.filter((p) => p.width > 0 && p.height > 0 && p.quantity > 0)
         if (validPieces.length === 0) return
-        const result = guillotinePack(validPieces, { sheetWidth, sheetHeight, kerfWidth, mode: optimizationMode })
+        const validOffcuts = offcuts.filter((o) => o.width > 0 && o.height > 0)
+        const result = guillotinePack(validPieces, {
+          sheetWidth,
+          sheetHeight,
+          kerfWidth,
+          mode: optimizationMode,
+          offcuts: validOffcuts,
+        })
         set({ result, activeSheetIndex: 0 })
       },
 
@@ -187,6 +222,7 @@ export const useAppStore = create<AppState>()(
         sheetWidth: state.sheetWidth,
         sheetHeight: state.sheetHeight,
         kerfWidth: state.kerfWidth,
+        offcuts: state.offcuts,
         optimizationMode: state.optimizationMode,
         geminiApiKey: state.geminiApiKey,
         sheetPricePerUnit: state.sheetPricePerUnit,

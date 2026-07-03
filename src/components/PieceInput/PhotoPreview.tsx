@@ -1,6 +1,7 @@
 import { Check, X, RefreshCw, Loader2, AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
+import { DimensionInput } from '../common/DimensionInput'
 import type { ExtractedPiece } from '../../types/plyplan'
 
 export function PhotoPreview() {
@@ -172,25 +173,19 @@ export function PhotoPreview() {
                     {piece.label}
                   </span>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <input
-                      type="text"
+                    <DimensionInput
                       value={piece.width}
                       onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value)
-                        if (!isNaN(v)) updateEditablePiece(i, 'width', v)
-                      }}
+                      onCommit={(v) => updateEditablePiece(i, 'width', v)}
+                      placeholder="W"
                       className="w-12 text-[13px] text-center bg-surface border border-border rounded px-1 py-1 outline-none focus:ring-1 focus:ring-primary/30"
                     />
                     <span className="text-text-muted text-[11px]">×</span>
-                    <input
-                      type="text"
+                    <DimensionInput
                       value={piece.height}
                       onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value)
-                        if (!isNaN(v)) updateEditablePiece(i, 'height', v)
-                      }}
+                      onCommit={(v) => updateEditablePiece(i, 'height', v)}
+                      placeholder="H"
                       className="w-12 text-[13px] text-center bg-surface border border-border rounded px-1 py-1 outline-none focus:ring-1 focus:ring-primary/30"
                     />
                     <span className="text-text-muted text-[11px]">×</span>

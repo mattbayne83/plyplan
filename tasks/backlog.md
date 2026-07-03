@@ -48,7 +48,7 @@ Features that make the sheet count answer trustworthy and the diagram useful.
 - [ ] **Visual grain indicator** — Arrow or line pattern on pieces in the diagram so you know orientation at the saw.
 
 ### Existing Stock
-- [ ] **Use partial sheets** — "I have a 24x48 offcut in the garage." Optimizer incorporates it. Might save buying a whole sheet — directly impacts the purchase decision (Moment 1).
+- [x] **Use partial sheets** — "I have a 24x48 offcut in the garage." Offcuts entered in Settings are packed before new sheets; shopping summary counts only sheets to buy. (`SettingsPanel.tsx`, `packer.ts`, `ShoppingSummary.tsx`) *(Shipped from beta-tester feedback)*
 
 ### Cost
 - [x] **Material cost estimation** — User sets price per sheet → total cost calculated. Implemented in `ShoppingSummary.tsx` with inline editable price. *(Shipped in P0 sprint)*

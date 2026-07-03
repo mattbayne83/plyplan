@@ -18,7 +18,8 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 - Phone-first single-page vertical flow: Settings → Empty State / Photo + Pieces → Results
 - No router — stacked sections, conditional rendering
 - Auto-optimize: `useAutoOptimize` hook watches pieces + settings, debounces 300ms, re-runs packer when `result` is null. No manual "Optimize" button.
-- State-driven: Zustand store with `persist` (pieces, settings, API key, sheet price only)
+- State-driven: Zustand store with `persist` (pieces, settings, offcuts, API key, sheet price only)
+- Offcuts: user-entered leftover stock (`offcuts` in store, edited in Settings). Packer seeds them as bins and only opens new full sheets when nothing fits; `PackerResult.newSheets` is the buy count shown in `ShoppingSummary`
 - Algorithm: Two modes in `packer.ts`, dispatched by `OptimizationMode`:
   - **minimize-waste** — Best-area-fit guillotine (rotates freely, packs tightest)
   - **minimize-saw-changes** — Shelf packing (groups same-height pieces into horizontal strips, avoids rotation, fewer unique fence settings)
@@ -54,6 +55,7 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 - `src/services/gemini.ts` — Gemini Vision API integration
 
 ### Components — Input
+- `src/components/common/DimensionInput.tsx` — Shared draft-buffered dimension input (commit on blur/Enter); used by PieceCard, SettingsPanel, PhotoPreview
 - `src/components/EmptyState.tsx` — "What are you building?" with camera + manual CTAs
 - `src/components/PieceInput/PieceCard.tsx` — Card-based piece input (mobile-optimized)
 - `src/components/PieceInput/PieceTable.tsx` — Piece list container (renders PieceCards)
@@ -70,11 +72,11 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 
 ### Layout
 - `src/components/Header.tsx` — App header with settings toggle
-- `src/components/Settings/SettingsPanel.tsx` — Sheet size, kerf, units, price, optimization mode, API key
+- `src/components/Settings/SettingsPanel.tsx` — Sheet size, offcuts on hand, kerf, units, price, optimization mode, API key
 
 ### Testing
 - `src/test/setup.ts` — jest-dom matchers + an in-memory `localStorage` polyfill for store-backed tests
-- `*.test.ts(x)` colocated with source — `zoomMath`, `pageZoomGuards`, `resetPinchZoom`, `units` (unit); `SawView`, `ResultsPanel` (RTL)
+- `*.test.ts(x)` colocated with source — `zoomMath`, `pageZoomGuards`, `resetPinchZoom`, `units`, `packer` (unit); `SawView`, `ResultsPanel`, `SettingsPanel`, `DimensionInput` (RTL)
 
 ## Docs
 - `docs/VISION.md` — Product vision, north star, "Two Moments" framework, competitive position
@@ -83,6 +85,9 @@ Plywood cut sheet optimizer for woodworkers. Snap a photo of a hand-drawn sketch
 ## Gotchas
 - **`@google/genai` not `@google/generative-ai`** — Use the newer SDK for Gemini 2.0+ features
 - **Kerf is asymmetric** — Added to right + bottom of placed pieces only, not at sheet edges
+- **Never bind dimension inputs straight to the store** — A controlled input with parse-or-ignore `onChange` snaps back on every invalid keystroke, so the field can never be emptied. Use `DimensionInput` (local draft while focused, commit on blur/Enter)
+- **Sheets vary in size once offcuts exist** — Render from `SheetResult.width/height/isOffcut`, not the store's `sheetWidth/sheetHeight`. Offcut bins are pre-seeded in the packer; unused ones are dropped in `buildResults`, so never assume `sheets[i]` is a full sheet
+- **`newSheets` vs `totalSheets`** — `newSheets` excludes offcuts and drives the shopping summary (count × price); `totalSheets` counts every bin used
 - **Packer is pure** — `guillotinePack(pieces, config)` returns data, no store access. `config.mode` selects algorithm
 - **Shelf packer normalizes orientation** — pieces are oriented so height <= width, reducing unique shelf heights
 - **Fraction parsing handles multiple formats** — "3-1/2", "3 1/2", "3.5", "1/4"
